@@ -69,13 +69,24 @@ export const authOptions = {
           if (!credentials?.email || !credentials?.password) return null;
           
           try {
+              console.log("Login attempt for:", credentials.email);
               const [rows]: any = await pool.query('SELECT * FROM users WHERE email = ?', [credentials.email]);
-              if (rows.length === 0) return null;
+              console.log("DB User found:", rows.length > 0 ? "YES" : "NO");
+              
+              if (rows.length === 0) {
+                  console.log("User not found in DB");
+                  return null;
+              }
               
               const user = rows[0];
-              if (!user.password) return null; // Google-only user trying to use password
+              if (!user.password) {
+                  console.log("User has no password set (Google User)");
+                  return null; 
+              }
               
               const isValid = await bcrypt.compare(credentials.password, user.password);
+              console.log("Password valid:", isValid ? "YES" : "NO");
+              
               if (!isValid) return null;
               
               return {
@@ -86,7 +97,7 @@ export const authOptions = {
                   phone: user.phone
               };
           } catch (error) {
-              console.error(error);
+              console.error("Login Error:", error);
               return null;
           }
         }
