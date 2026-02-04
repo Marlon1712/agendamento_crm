@@ -14,9 +14,21 @@ type Procedure = {
   promo_end_date: string | null;
   promo_start_date: string | null;
   description?: string;
-  observation?: string; // Corrected from prev type
-  promo_type?: 'discount' | 'combo' | 'gift'; // New
-  promo_gift_item?: string; // New
+  observation?: string; 
+  promo_type?: 'discount' | 'combo' | 'gift'; 
+  promo_gift_item?: string; 
+};
+
+// HELPER: Safe Date Validation
+const isValidDate = (d: any) => {
+    return d instanceof Date && !isNaN(d.getTime());
+};
+
+// HELPER: Safe Price Parsing
+const safeFloat = (val: any) => {
+    if (val === null || val === undefined) return 0;
+    const f = parseFloat(val);
+    return isNaN(f) ? 0 : f;
 };
 
 export default function BookingWizard() {
@@ -210,15 +222,15 @@ export default function BookingWizard() {
                     
                     // Expired? If has end date and end date < now - 24 hours (grace? No, strict per logic)
                     // Logic: If promo_end_date is passed, visually it should disappear or be standard. USER said: "expirado apos um dia esse card seja deletado"
-                    const isExpired = endRaw && (endRaw.getTime() + 86400000) < nowTS;
+                    const isExpired = endRaw && isValidDate(endRaw) && (endRaw.getTime() + 86400000) < nowTS;
                     if(isExpired && proc.is_promotional) return null; // Filter out expired promos entirely
 
-                    const startsInFuture = startRaw && startRaw.getTime() > nowTS;
+                    const startsInFuture = startRaw && isValidDate(startRaw) && startRaw.getTime() > nowTS;
 
                     // Active check
                     const isPromoPeriod = !!proc.is_promotional && 
-                        (!startRaw || startRaw.getTime() <= nowTS) &&
-                        (!endRaw || endRaw.getTime() >= nowTS);
+                        (!startRaw || !isValidDate(startRaw) || startRaw.getTime() <= nowTS) &&
+                        (!endRaw || !isValidDate(endRaw) || endRaw.getTime() >= nowTS);
                         
                     // Vacancy logic
                     const vacancy = promoAvailability[proc.id];
@@ -235,8 +247,6 @@ export default function BookingWizard() {
                     const isSoldOut = isPromoPeriod && !hasVacancy && vacancy !== undefined;
 
                     // Interaction Logic
-                    // Gift Sold Out -> DISABLED
-                    // Discount/Combo Sold Out -> Standard Price (Clickable)
                     const isDisabled = isFuture || (isSoldOut && isGift);
                     
                     // Reuse expandedProcedureId for description toggle
@@ -244,7 +254,7 @@ export default function BookingWizard() {
 
                     // Countdown Helper
                     const getDaysToStart = () => {
-                         if(!startRaw) return 0;
+                         if(!startRaw || !isValidDate(startRaw)) return 0;
                          const diff = startRaw.getTime() - nowTS;
                          return Math.ceil(diff / (1000 * 60 * 60 * 24));
                     }
@@ -344,14 +354,14 @@ export default function BookingWizard() {
                                             <div className="text-center bg-gray-200 rounded p-2">
                                                 <p className="text-xs text-gray-500 font-bold uppercase">Inicia em</p>
                                                 <p className="text-lg font-bold text-gray-700">{getDaysToStart()} dias</p>
-                                                <p className="text-[10px] text-gray-400">{startRaw?.toLocaleDateString('pt-BR')}</p>
+                                                <p className="text-[10px] text-gray-400">{isValidDate(startRaw) ? startRaw?.toLocaleDateString('pt-BR') : ''}</p>
                                             </div>
                                         ) : isActive ? (
                                             <>
                                                 {/* Pricing Logic */}
                                                 {isGift ? (
                                                     <div className="flex flex-col">
-                                                        <span className="text-2xl font-bold text-purple-700">R$ {parseFloat(proc.price).toFixed(2)}</span>
+                                                        <span className="text-2xl font-bold text-purple-700">R$ {safeFloat(proc.price).toFixed(2)}</span>
                                                         <div className="flex items-center gap-1 mt-1 animate-bounce-small">
                                                             <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded border border-purple-200">
                                                                 + {proc.promo_gift_item || 'Brinde Surpresa'}
@@ -361,14 +371,14 @@ export default function BookingWizard() {
                                                 ) : (
                                                      /* Discount or Combo */
                                                     <>
-                                                        <span className="text-xs text-gray-400 line-through">R$ {parseFloat(proc.price).toFixed(2)}</span>
+                                                        <span className="text-xs text-gray-400 line-through">R$ {safeFloat(proc.price).toFixed(2)}</span>
                                                         <div className="flex flex-col gap-1">
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`text-2xl font-bold ${isCombo ? 'text-blue-600' : 'text-orange-600'}`}>
-                                                                    R$ {parseFloat(proc.promo_price).toFixed(2)}
+                                                                    R$ {safeFloat(proc.promo_price).toFixed(2)}
                                                                 </span>
                                                                 <span className={`text-xs px-2 py-0.5 rounded font-bold border ${isCombo ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>
-                                                                    -{Math.round((1 - parseFloat(proc.promo_price)/parseFloat(proc.price)) * 100)}%
+                                                                    -{Math.round((1 - safeFloat(proc.promo_price)/safeFloat(proc.price)) * 100)}%
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -376,7 +386,7 @@ export default function BookingWizard() {
                                                 )}
                                                 
                                                 <div className="flex flex-col text-[10px] text-gray-400 font-medium mt-1">
-                                                    {proc.promo_end_date && (
+                                                    {proc.promo_end_date && isValidDate(new Date(proc.promo_end_date)) && (
                                                         <span>Expira em: {new Date(proc.promo_end_date).toLocaleDateString('pt-BR')}</span>
                                                     )}
                                                 </div>
@@ -386,7 +396,7 @@ export default function BookingWizard() {
                                             <div className="flex flex-col">
                                                 {isSoldOut && <span className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wide">Preço Normal</span>}
                                                 <span className={`text-2xl font-bold ${isDisabled ? 'text-gray-400' : 'text-gray-800'}`}>
-                                                    R$ {parseFloat(proc.price).toFixed(2)}
+                                                    R$ {safeFloat(proc.price).toFixed(2)}
                                                 </span>
                                             </div>
                                         )}
@@ -578,8 +588,7 @@ export default function BookingWizard() {
                                 
                                 // Mask: (XX) XXXXX-XXXX
                                 if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-                                if (v.length > 10) v = `${v.slice(0,10)}-${v.slice(10)}`; // Adjust for 5 digits usually
-                                // A simpler approach for (XX) XXXXX-XXXX vs (XX) XXXX-XXXX
+                                if (v.length > 10) v = `${v.slice(0,10)}-${v.slice(10)}`; 
                                 
                                 // Let's use standard: (11) 91234-5678
                                 const raw = e.target.value.replace(/\D/g, '');
@@ -604,7 +613,7 @@ export default function BookingWizard() {
                         {(() => {
                            // Check if promo applies to DATE
                            const isPromoDate = !!selectedProcedure?.is_promotional && 
-                                               (!selectedProcedure?.promo_end_date || new Date(selectedProcedure?.promo_end_date) >= new Date(date + 'T' + time));
+                                               (!selectedProcedure?.promo_end_date || (isValidDate(new Date(selectedProcedure?.promo_end_date!)) && new Date(selectedProcedure?.promo_end_date!) >= new Date(date + 'T' + time)));
                            
                            // Check Vacancy
                            const procId = selectedProcedure?.id || 0;
@@ -622,11 +631,11 @@ export default function BookingWizard() {
                                    )}
                                    {isEligible ? (
                                        <div className="flex flex-col items-center">
-                                            <span className="text-xs text-gray-400 line-through">R$ {parseFloat(selectedProcedure!.price).toFixed(2)}</span>
-                                            <span className="font-bold text-xl text-green-600">Total: R$ {parseFloat(selectedProcedure!.promo_price).toFixed(2)}</span>
+                                            <span className="text-xs text-gray-400 line-through">R$ {safeFloat(selectedProcedure!.price).toFixed(2)}</span>
+                                            <span className="font-bold text-xl text-green-600">Total: R$ {safeFloat(selectedProcedure!.promo_price).toFixed(2)}</span>
                                        </div>
                                    ) : (
-                                       <p className="font-bold text-xl text-gray-900">Total: R$ {parseFloat(selectedProcedure?.price || '0').toFixed(2)}</p>
+                                       <p className="font-bold text-xl text-gray-900">Total: R$ {safeFloat(selectedProcedure?.price).toFixed(2)}</p>
                                    )}
                                </div>
                            );
