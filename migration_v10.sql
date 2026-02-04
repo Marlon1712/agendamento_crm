@@ -1,0 +1,1 @@
+ALTER TABLE procedures ADD COLUMN promo_slots INT DEFAULT NULL;
