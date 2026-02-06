@@ -50,9 +50,11 @@ export async function GET(request: Request) {
     const [leads]: any = await pool.query(leadsQuery, leadsParams);
 
     const [blocks]: any = await pool.query(
-        'SELECT start_time, end_time FROM blocked_slots WHERE blocked_date = ?',
+        'SELECT id, start_time, end_time, reason FROM blocked_slots WHERE blocked_date = ?',
         [dateStr]
     );
+    const manualBlocks = blocks.filter((b: any) => b.reason !== 'override');
+    const overrides = blocks.filter((b: any) => b.reason === 'override');
 
     // Helpers
     const toMinutes = (timeStr: string) => {
@@ -103,29 +105,48 @@ export async function GET(request: Request) {
             unavailableReason = 'past';
         }
 
-        // 3. Lunch check
+        // 3. Lunch check (unless overridden)
         if (status === 'available' && lunchStartMin !== -1) {
             // Check overlap: (StartA < EndB) and (EndA > StartB)
             // If the SERVICE overlaps lunch
-            if (slotStart < lunchEndMin && slotEnd > lunchStartMin) {
+            const hasOverride = overrides.some((ov: any) => {
+                const bStart = toMinutes(ov.start_time);
+                const bEnd = ov.end_time ? toMinutes(ov.end_time) : bStart + 60;
+                return (slotStart < bEnd) && (slotEnd > bStart);
+            });
+            if (!hasOverride && slotStart < lunchEndMin && slotEnd > lunchStartMin) {
                  status = 'unavailable';
                  unavailableReason = 'lunch';
             }
         }
 
-        // 4. Busy check (Leads + Blocks)
+        // 4. Busy check (Leads)
         if (status === 'available') {
-             const isBusy = [...leads, ...blocks].some((busy: any) => {
-                const bStart = toMinutes(busy.appointment_time || busy.start_time);
-                const bEnd = busy.end_time ? toMinutes(busy.end_time) : bStart + 60; 
-                
-                // Overlap
+            const isBusy = leads.some((busy: any) => {
+                const bStart = toMinutes(busy.appointment_time);
+                const bEnd = busy.end_time ? toMinutes(busy.end_time) : bStart + 60;
                 return (slotStart < bEnd) && (slotEnd > bStart);
             });
-            
             if (isBusy) {
                 status = 'unavailable';
                 unavailableReason = 'busy';
+            }
+        }
+
+        // 5. Manual block check (Blocked Slots)
+        let blockReason: string | null = null;
+        let blockId: number | null = null;
+        if (status === 'available') {
+            const block = manualBlocks.find((busy: any) => {
+                const bStart = toMinutes(busy.start_time);
+                const bEnd = busy.end_time ? toMinutes(busy.end_time) : bStart + 60;
+                return (slotStart < bEnd) && (slotEnd > bStart);
+            });
+            if (block) {
+                status = 'unavailable';
+                unavailableReason = 'blocked';
+                blockReason = block.reason || 'Bloqueado';
+                blockId = block.id || null;
             }
         }
 
@@ -135,6 +156,8 @@ export async function GET(request: Request) {
                 time: formatTime(slotStart),
                 available: status === 'available',
                 reason: unavailableReason,
+                blockedReason: blockReason,
+                blockedId: blockId,
                 debug: `start:${slotStart} end:${slotEnd}`
             });
         }
@@ -160,7 +183,9 @@ export async function GET(request: Request) {
         summary: {
             date: dateStr,
             isOpen: true, // simplified, relying on date check
-            reason: summaryReason
+            reason: summaryReason,
+            openTime,
+            closeTime
         }
     });
 

@@ -19,10 +19,11 @@ type AdminBookingModalProps = {
   onClose: () => void;
   onSuccess: () => void;
   initialDate?: string;
+  initialTime?: string;
   bookingToEdit?: BookingData | null;
 };
 
-export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialDate, bookingToEdit }: AdminBookingModalProps) {
+export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialDate, initialTime, bookingToEdit }: AdminBookingModalProps) {
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [procedures, setProcedures] = useState<any[]>([]);
@@ -68,11 +69,11 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
             setClientContact('');
             setProcedureId(null);
             setDate(initialDate || '');
-            setTime(null);
+            setTime(initialTime || null);
             setPrice('');
         }
     }
-  }, [isOpen, initialDate, bookingToEdit]);
+  }, [isOpen, initialDate, initialTime, bookingToEdit]);
 
   // Fetch Slots when Date/Procedure changes
   useEffect(() => {

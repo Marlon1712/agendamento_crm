@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, TouchEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import AdminBookingModal from '@/app/components/AdminBookingModal';
 import ConfirmationModal from '@/app/components/ConfirmationModal';
 import RescheduleModal from '@/app/components/RescheduleModal';
-import { ChevronLeft, ChevronRight, Plus, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Menu, Check, Coffee, Clock, Hourglass, Lock, LockOpen, AlertCircle } from 'lucide-react';
 import { useSidebar } from '@/context/SidebarContext';
 
 export default function CalendarDashboard() {
@@ -14,25 +14,25 @@ export default function CalendarDashboard() {
     const { data: session } = useSession();
     const router = useRouter();
     const [leads, setLeads] = useState<any[]>([]);
+    const [procedures, setProcedures] = useState<any[]>([]);
+    const [slotProcedureId, setSlotProcedureId] = useState<number | null>(null);
+    const [availableSlots, setAvailableSlots] = useState<{ time: string, available: boolean, reason?: string, blockedReason?: string | null, blockedId?: number | null }[]>([]);
+    const [slotMeta, setSlotMeta] = useState<{ openTime?: string; closeTime?: string }>({});
+    const [slotsRefreshTick, setSlotsRefreshTick] = useState(0);
+    const [initialTime, setInitialTime] = useState<string | undefined>(undefined);
+    const [unblockModal, setUnblockModal] = useState<{ isOpen: boolean; id: number | null; label?: string; time?: string; end?: string }>({ isOpen: false, id: null });
+    const [blockModal, setBlockModal] = useState<{ isOpen: boolean; time?: string }>({ isOpen: false });
+    const [blockReason, setBlockReason] = useState('Bloqueado');
+    const [blockDuration, setBlockDuration] = useState(30);
 
-    // Helper for Local Date YYYY-MM-DD
-    const getLocalDate = () => {
-        const d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        return d.toISOString().split('T')[0];
-    };
+    // YYYY-MM-DD
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-    const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [bookingToEdit, setBookingToEdit] = useState<any>(null); // EDIT MODE STATE
-
-    const [selectedDay, setSelectedDay] = useState<string | null>(null); // YYYY-MM-DD
-    const [expandedNotesId, setExpandedNotesId] = useState<number | null>(null);
-    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
-    const [showDeleteForId, setShowDeleteForId] = useState<number | null>(null);
 
     // Swipe State
     const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -52,9 +52,23 @@ export default function CalendarDashboard() {
         const isRightSwipe = distance < -minSwipeDistance;
 
         if (isLeftSwipe) {
-            nextMonth();
+            if (selectedDay) {
+                // Next day logic if needed, or swipe month
+                const next = new Date(selectedDay);
+                next.setDate(next.getDate() + 1);
+                setSelectedDay(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`);
+            } else {
+                nextMonth();
+            }
         } else if (isRightSwipe) {
-            prevMonth();
+            if (selectedDay) {
+                // Prev day
+                const prev = new Date(selectedDay);
+                prev.setDate(prev.getDate() - 1);
+                setSelectedDay(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`);
+            } else {
+                prevMonth();
+            }
         }
     };
 
@@ -70,11 +84,6 @@ export default function CalendarDashboard() {
         lead: any | null;
     }>({ isOpen: false, lead: null });
 
-    const [notesModal, setNotesModal] = useState<{
-        isOpen: boolean;
-        lead: any | null;
-        notes: string;
-    }>({ isOpen: false, lead: null, notes: '' });
 
     const confirmAction = (id: number, type: 'realizado' | 'cancelado' | 'agendado' | 'excluir') => {
         setModal({ isOpen: true, id, type });
@@ -123,23 +132,9 @@ export default function CalendarDashboard() {
         }
     };
 
-    const saveNotes = async () => {
-        if (!notesModal.lead) return;
-        try {
-            await fetch(`/api/leads/${notesModal.lead.id}/notes`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ admin_notes: notesModal.notes })
-            });
-            setLeads(leads.map(l => l.id === notesModal.lead.id ? { ...l, admin_notes: notesModal.notes } : l));
-            setNotesModal({ isOpen: false, lead: null, notes: '' });
-        } catch (error) {
-            alert('Erro ao salvar notas');
-        }
-    };
-
     // --- LONG PRESS HANDLER FOR EDIT MODE ---
     const handleLongPress = (lead: any) => {
+        setInitialTime(undefined);
         setBookingToEdit(lead);
         setIsCreateModalOpen(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
@@ -148,433 +143,759 @@ export default function CalendarDashboard() {
     useEffect(() => {
         fetch('/api/leads/list')
             .then((res) => {
-                if (res.status === 401) {
-                    router.push('/admin/login');
-                    throw new Error('Unauthorized');
-                }
+                if (res.status === 401) router.push('/login');
                 return res.json();
             })
             .then((data) => {
-                if (data.leads) setLeads(data.leads);
+                if (Array.isArray(data)) {
+                    setLeads(data);
+                } else if (Array.isArray(data?.leads)) {
+                    setLeads(data.leads);
+                }
             })
-            .finally(() => setLoading(false));
-    }, [router]);
+            .catch(() => { });
+    }, [modal.isOpen, rescheduleModal.isOpen, isCreateModalOpen]);
 
-    // Calendar Logic
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    // Load procedures for available slots selector
+    useEffect(() => {
+        fetch('/api/procedures')
+            .then(res => res.json())
+            .then(data => {
+                const list = Array.isArray(data) ? data : data.procedures || [];
+                setProcedures(list);
+                if (list.length > 0 && !slotProcedureId) setSlotProcedureId(list[0].id);
+            })
+            .catch(() => setProcedures([]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
+    // Fetch available slots for selected day + procedure
+    useEffect(() => {
+        if (!selectedDay || !slotProcedureId) {
+            setAvailableSlots([]);
+            return;
+        }
+        fetch(`/api/slots/available?date=${selectedDay}&procedureId=${slotProcedureId}`)
+            .then(res => res.json())
+            .then(data => {
+                setAvailableSlots(data.slots || []);
+                setSlotMeta({
+                    openTime: data?.summary?.openTime ? String(data.summary.openTime).slice(0, 5) : undefined,
+                    closeTime: data?.summary?.closeTime ? String(data.summary.closeTime).slice(0, 5) : undefined
+                });
+            })
+            .catch(() => {
+                setAvailableSlots([]);
+                setSlotMeta({});
+            });
+    }, [selectedDay, slotProcedureId, slotsRefreshTick]);
 
-    const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-    const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-    const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-    const goToToday = () => setCurrentDate(new Date());
+    // CALENDAR UTILS
+    const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    const startDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 
-    const gridCells = [];
-    // Padding
-    for (let i = 0; i < firstDayOfMonth; i++) {
-        gridCells.push(<div key={`empty-${i}`} className="bg-transparent min-h-[100px]"></div>);
+    const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    const goToToday = () => {
+        const now = new Date();
+        setCurrentDate(now);
+        // If in day view, jump to today's list
+        if (selectedDay) {
+            setSelectedDay(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
+        }
+    };
+
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+    // Group leads by date (normalize DB date types to YYYY-MM-DD)
+    const normalizeDateKey = (value: any) => {
+        if (!value) return null;
+        if (value instanceof Date) return value.toISOString().slice(0, 10);
+        if (typeof value === 'string') {
+            if (value.length >= 10) return value.slice(0, 10);
+            return value;
+        }
+        return null;
+    };
+
+    const leadsByDate: Record<string, any[]> = {};
+    leads.forEach(lead => {
+        const key = normalizeDateKey(lead.appointment_date);
+        if (!key) return;
+        if (!leadsByDate[key]) leadsByDate[key] = [];
+        leadsByDate[key].push(lead);
+    });
+
+    const isToday = (dateStr: string) => {
+        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+        return dateStr === todayStr;
+    };
+
+    // Sort leads by time
+    Object.keys(leadsByDate).forEach(key => {
+        leadsByDate[key].sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
+    });
+
+    // --- DAY VIEW HELPERS ---
+    const getWeekDays = (dateStr: string) => {
+        const date = new Date(dateStr + 'T12:00:00'); // Safe parsing?
+        const current = new Date(date);
+        // Find Sunday
+        const day = current.getDay();
+        const diff = current.getDate() - day; // adjust when day is sunday
+        const sunday = new Date(current.setDate(diff));
+
+        const week = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(sunday);
+            d.setDate(sunday.getDate() + i);
+            week.push(d);
+        }
+        return week;
     }
 
-    // Days
-    for (let i = 1; i <= daysInMonth; i++) {
-        const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
-        const dayLeads = leads.filter(l => l.appointment_date && typeof l.appointment_date === 'string' && l.appointment_date.split('T')[0] === dateStr);
-        dayLeads.sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || ''));
-
-        const isToday = getLocalDate() === dateStr;
-
-        gridCells.push(
-            <div
-                key={i}
-                onClick={() => setSelectedDay(dateStr)}
-                className={`
-                min-h-[90px] md:min-h-[130px] p-[2px] relative group cursor-pointer transition-all duration-200
-                bg-[#18181b] rounded-md border border-white/5 hover:border-white/10 hover:bg-[#202024]
-            `}
-            >
-                <div className="flex justify-center mb-[2px]">
-                    <span className={`text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-fuchsia-600 text-white shadow-sm' : 'text-zinc-500'}`}>
-                        {i}
-                    </span>
-                </div>
-
-                <div className="flex flex-col gap-[1px] overflow-hidden">
-                    {dayLeads.slice(0, 5).map(lead => {
-                        // Status Color Mapping
-                        let bgClass = 'bg-zinc-800 text-zinc-300';
-                        if (lead.status === 'realizado') bgClass = 'bg-emerald-600/90 text-white';
-                        else if (lead.status === 'agendado') bgClass = 'bg-blue-600/90 text-white';
-                        else if (lead.status === 'confirmado') bgClass = 'bg-indigo-600/90 text-white';
-                        else if (lead.status === 'cancelado') bgClass = 'bg-red-600/90 text-white';
-                        else if (lead.status === 'pendente') bgClass = 'bg-orange-500 text-white';
-                        else if (lead.name && lead.name.toLowerCase().includes('terapia')) bgClass = 'bg-fuchsia-600/90 text-white';
-
-                        return (
-                            <div
-                                key={lead.id}
-                                className={`
-                                px-[2px] rounded-[2px] shadow-sm text-[8px] font-medium truncate leading-none py-[1px] tracking-tight mb-[1px] flex items-center justify-center text-center
-                                ${bgClass}
-                            `}
-                            >
-                                {lead.name ? lead.name.split(' ')[0] : 'Sem Nome'}
-                            </div>
-                        );
-                    })}
-                    {dayLeads.length > 5 && (
-                        <div className="text-[7px] text-zinc-600 font-bold text-center leading-none mt-[1px]">...</div>
-                    )}
-                </div>
-            </div>
-        );
+    const getDayLeads = (dateStr: string) => {
+        return leadsByDate[dateStr] || [];
     }
 
-    // Determine selected day leads
-    const selectedDayLeads = selectedDay
-        ? leads.filter(l => l.appointment_date && typeof l.appointment_date === 'string' && l.appointment_date.split('T')[0] === selectedDay)
-            .sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || ''))
-        : [];
+    // Helper to get color based on ID/String (consistent)
+    const getAccentColor = (str: string) => {
+        const colors = [
+            'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-teal-500',
+            'bg-indigo-500', 'bg-orange-500', 'bg-cyan-500'
+        ];
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        return colors[Math.abs(hash) % colors.length];
+    }
+    const getAccentColorHex = (str: string) => {
+        // Just matching above classes for ring/shadow logic if needed,
+        // but simple class is easier.
+        return '';
+    }
 
-    const selectedDateObj = selectedDay ? new Date(selectedDay + 'T00:00:00') : null;
+    const addMinutes = (time: string, mins: number) => {
+        const [h, m] = time.split(':').map(Number);
+        const total = h * 60 + m + mins;
+        const hh = Math.floor(total / 60).toString().padStart(2, '0');
+        const mm = (total % 60).toString().padStart(2, '0');
+        return `${hh}:${mm}`;
+    };
 
+    const refreshSlots = () => setSlotsRefreshTick((t) => t + 1);
+
+    const handleBlockSlot = async (time: string, durationMinutes: number, reason: string) => {
+        if (!selectedDay) return;
+        try {
+            await fetch('/api/slots/block', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: selectedDay,
+                    startTime: time,
+                    endTime: addMinutes(time, durationMinutes),
+                    reason
+                })
+            });
+            refreshSlots();
+        } catch {
+            alert('Erro ao bloquear horário');
+        }
+    };
+
+    const handleUnlockLunch = async (time: string) => {
+        if (!selectedDay) return;
+        try {
+            await fetch('/api/slots/block', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: selectedDay,
+                    startTime: time,
+                    endTime: addMinutes(time, 30),
+                    reason: 'override'
+                })
+            });
+            refreshSlots();
+        } catch {
+            alert('Erro ao liberar horário de almoço');
+        }
+    };
+
+    const handleUnblockSlot = async (id?: number | null) => {
+        if (!id) return;
+        try {
+            await fetch(`/api/slots/block?id=${id}`, { method: 'DELETE' });
+            refreshSlots();
+        } catch {
+            alert('Erro ao desbloquear horário');
+        }
+    };
+
+    const statusMap: Record<string, { bar: string; badge: string; label: string; icon?: 'check' | 'hourglass'; iconBg?: string; iconColor?: string }> = {
+        agendado: {
+            bar: 'bg-emerald-500',
+            badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
+            label: 'Confirmado',
+            icon: 'check',
+            iconBg: 'bg-emerald-500/10',
+            iconColor: 'text-emerald-500'
+        },
+        pendente: {
+            bar: 'bg-purple-500',
+            badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
+            label: 'Aguardando',
+            icon: 'hourglass',
+            iconBg: 'bg-purple-500/10',
+            iconColor: 'text-purple-500'
+        },
+        cancelado: {
+            bar: 'bg-rose-500',
+            badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400',
+            label: 'Cancelado'
+        },
+        realizado: {
+            bar: 'bg-sky-500',
+            badge: 'bg-sky-100 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400',
+            label: 'Realizado',
+            icon: 'check',
+            iconBg: 'bg-sky-500/10',
+            iconColor: 'text-sky-500'
+        }
+    };
 
     return (
         <div
-            className="h-[calc(100vh+2rem)] md:h-[calc(100vh+4rem)] flex flex-col bg-[#121212] overflow-hidden relative -m-4 md:-m-8 w-[calc(100%+2rem)] md:w-[calc(100%+4rem)]"
+            className="flex flex-col h-full bg-white dark:bg-slate-950 font-sans"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
         >
+            {/* Header Top Row */}
+            <div className="fixed top-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur px-6 py-4 pt-6 shrink-0 border-b border-slate-100 dark:border-slate-900">
+                <div className="flex items-center justify-between">
+                    <div className="w-10" />
 
-            {/* Header - Minimalist Centered Title Only (No Box) */}
-            <header className="relative flex items-center justify-center py-4 bg-[#121212] shrink-0 border-b border-white/5">
-                <div className="flex items-center gap-6">
-                    <button onClick={prevMonth} className="p-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"><ChevronLeft size={20} /></button>
-                    <h1 className="text-base font-bold text-white uppercase tracking-widest min-w-[120px] text-center">
-                        {MONTHS[month]} <span className="text-zinc-500">{year}</span>
+                    {/* Title Changes based on View */}
+                    <h1 className="text-xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
+                        {selectedDay ? 'Agenda Detalhada' : 'Agenda Diária'}
                     </h1>
-                    <button onClick={nextMonth} className="p-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"><ChevronRight size={20} /></button>
+
+                    <button
+                        onClick={goToToday}
+                        className="bg-[#f3e8ff] dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 px-4 py-2 rounded-full text-sm font-bold hover:bg-[#e9d5ff] transition-colors"
+                    >
+                        Today
+                    </button>
                 </div>
-
-                <button
-                    onClick={goToToday}
-                    className="absolute right-4 p-2 rounded-full hover:bg-white/10 text-zinc-500 hover:text-fuchsia-400 transition-colors"
-                    title="Voltar para Hoje"
-                >
-                    <RotateCcw size={18} />
-                </button>
-            </header>
-
-            <div className="flex flex-1 overflow-hidden">
-                {/* Main Grid */}
-                <main className="flex-1 overflow-y-auto pb-4 bg-[#121212] px-[1px] md:px-1">
-                    {/* Day Names Header */}
-                    <div className="grid grid-cols-7 mb-1 sticky top-0 bg-[#121212] z-10 pt-2 pb-2 border-b border-white/5">
-                        {['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'].map(day => (
-                            <div key={day} className={`text-center text-xs font-semibold uppercase tracking-wider ${day === 'seg' ? 'text-blue-400' : 'text-zinc-500'}`}>
-                                {day}.
-                            </div>
-                        ))}
-                    </div>
-                    {/* Calendar Cells */}
-                    <div className="grid grid-cols-7 auto-rows-fr bg-[#121212] gap-1">
-                        {gridCells}
-                    </div>
-                </main>
             </div>
 
-            {/* Main View FABs - Conditional Visibility */}
-            {!isSidebarOpen && !isCreateModalOpen && (
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="fixed bottom-6 right-6 w-10 h-10 bg-fuchsia-600 hover:bg-fuchsia-700 rounded-xl flex items-center justify-center text-white shadow-xl z-[90] transition-all active:scale-95 shadow-fuchsia-900/20"
-                >
-                    <Plus size={20} />
+            {/* Navigation */}
+            <div className="flex items-center justify-between px-6 pb-2 shrink-0 pt-20">
+                <button onClick={prevMonth} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2">
+                    <ChevronLeft size={24} />
                 </button>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 capitalize font-display">
+                    {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                </h2>
+                <button onClick={nextMonth} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2">
+                    <ChevronRight size={24} />
+                </button>
+            </div>
+
+            {/* Weekday Header */}
+            <div className="grid grid-cols-7 px-2 pb-1 pt-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d) => (
+                    <div key={d} className="text-center">
+                        {d}
+                    </div>
+                ))}
+            </div>
+
+            {/* CONTENT AREA */}
+            <div className="flex-1 flex flex-col overflow-hidden relative px-2 pb-4 pt-2">
+
+                {/* MONTH GRID VIEW */}
+                <div className={`
+                    grid grid-cols-7 w-full transition-all duration-300 ease-in-out
+                    ${selectedDay ? 'h-[280px] shrink-0 overflow-hidden' : 'auto-rows-fr flex-1 overflow-y-auto no-scrollbar'}
+                `}>
+                    {/* Header Days - Only show if large view or stick it? */}
+                    {/* Actually better to put header *outside* this div to persist. done above. */}
+
+                    {/* Empty Slots */}
+                    {Array.from({ length: startDayOfMonth(currentDate) }).map((_, i) => (
+                        <div key={`empty-${i}`} className={`flex flex-col items-center justify-start opacity-30 ${selectedDay ? 'pt-2' : 'pt-4'}`} />
+                    ))}
+
+                    {/* Days */}
+                    {Array.from({ length: daysInMonth(currentDate) }).map((_, i) => {
+                        const day = i + 1;
+                        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dayLeads = leadsByDate[dateStr] || [];
+                        const isCurrent = isToday(dateStr);
+                        const isSelected = selectedDay === dateStr;
+
+                        return (
+                            <div
+                                key={day}
+                                className={`
+                                    flex flex-col items-center justify-start cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/30 rounded-lg transition-all
+                                    ${selectedDay ? 'pt-2 aspect-[1/0.8]' : 'pt-4 aspect-[1/1.1]'}
+                                `}
+                                onClick={() => {
+                                    if (selectedDay === dateStr) setSelectedDay(null); // Toggle off
+                                    else setSelectedDay(dateStr);
+                                }}
+                            >
+                                <div className={`
+                                    flex flex-col items-center justify-center rounded-full transition-all
+                                    ${isCurrent
+                                        ? selectedDay ? 'bg-[#ec4899] text-white shadow-lg shadow-pink-100 dark:shadow-none size-7' : 'bg-[#ec4899] text-white shadow-lg shadow-pink-100 dark:shadow-none size-8'
+                                        : isSelected ? 'text-slate-600 dark:text-slate-400 font-semibold size-6 ring-2 ring-fuchsia-400' : 'text-slate-600 dark:text-slate-400 font-semibold size-7'}
+                                    ${isSelected && !isCurrent ? 'scale-90' : ''}
+                                `}>
+                                    <span className={selectedDay ? "text-sm font-bold" : "text-base font-bold"}>{day}</span>
+                                </div>
+
+                                {/* Leads Dots or Names */}
+                                {!selectedDay ? (
+                                    // Full Name View (Expanded/Default)
+                                    <div className="flex flex-col items-center w-full px-1">
+                                        {dayLeads.slice(0, 2).map((lead) => (
+                                            <div
+                                                key={lead.id}
+                                                className={`
+                                                    text-[10px] w-full text-center leading-tight truncate mt-0.5 font-medium
+                                                    ${isCurrent ? 'text-[#ec4899] dark:text-fuchsia-400' : 'text-slate-400 dark:text-slate-500'}
+                                                `}
+                                            >
+                                                {lead.client_name || lead.name || 'Cliente'}
+                                            </div>
+                                        ))}
+                                        {dayLeads.length > 2 && (
+                                            <span className="text-[9px] text-slate-300 mt-0.5 leading-tight">+{dayLeads.length - 2}</span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    // Compact Dot View (When list is shown below)
+                                    <div className="flex gap-0.5 mt-1 flex-wrap justify-center px-2">
+                                        {dayLeads.slice(0, 3).map((lead) => (
+                                            <div key={lead.id} className="size-1 rounded-full bg-fuchsia-500/50" />
+                                        ))}
+                                        {dayLeads.length > 3 && <div className="size-1 rounded-full bg-slate-300" />}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* DAY TIMELINE VIEW (Appears Below) */}
+                {selectedDay && (
+                    <div className="flex-1 overflow-y-auto animate-slide-up border-t border-slate-100 dark:border-slate-800 mt-4 pt-4">
+                        <div className="sr-only">
+                            {new Date(selectedDay + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}
+                        </div>
+
+                        <div className="flex flex-col gap-4 px-4 pb-20">
+                            {(() => {
+                                const dayLeads = getDayLeads(selectedDay);
+                                const slots = [...availableSlots].sort((a, b) => a.time.localeCompare(b.time));
+
+                                if (slots.length === 0 && dayLeads.length === 0) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+                                            <p>Nenhum agendamento.</p>
+                                            <button onClick={() => { setInitialTime(undefined); setBookingToEdit(null); setIsCreateModalOpen(true); }} className="mt-2 text-fuchsia-600 font-bold text-sm">+ Adicionar</button>
+                                        </div>
+                                    );
+                                }
+
+                                const slotTimes = slots.map(s => s.time);
+                                const slotMap = new Map(slots.map(s => [s.time, s]));
+
+                                const leadsByStart = new Map<string, any>();
+                                const leadSpanByStart = new Map<string, number>();
+                                const occupiedTimes = new Set<string>();
+
+                                dayLeads.forEach((lead: any) => {
+                                    const start = lead.appointment_time.slice(0, 5);
+                                    const duration = Number(lead.procedure_duration || lead.duration || 30);
+                                    const span = Math.max(1, Math.ceil(duration / 30));
+                                    leadsByStart.set(start, lead);
+                                    leadSpanByStart.set(start, span);
+                                    for (let i = 0; i < span; i++) {
+                                        occupiedTimes.add(addMinutes(start, i * 30));
+                                    }
+                                });
+
+                                return (
+                                    <div className="grid grid-cols-[70px_1fr] gap-y-3" style={{ gridAutoRows: '72px' }}>
+                                        {slotTimes.map((time, idx) => (
+                                            <div
+                                                key={`time-${time}`}
+                                                className="flex flex-col items-center pt-2 min-w-[60px]"
+                                                style={{ gridColumn: 1, gridRow: idx + 1 }}
+                                            >
+                                                <span className="text-lg font-bold text-slate-800 dark:text-white">{time}</span>
+                                                <span className="text-xs text-slate-400 uppercase">
+                                                    {parseInt(time.slice(0, 2)) >= 12 ? 'PM' : 'AM'}
+                                                </span>
+                                            </div>
+                                        ))}
+
+                                        {slotTimes.map((time, idx) => {
+                                            const row = idx + 1;
+                                            const lead = leadsByStart.get(time);
+                                            if (lead) {
+                                                const span = leadSpanByStart.get(time) || 1;
+                                                const status = statusMap[lead.status] || statusMap.agendado;
+                                                return (
+                                                    <div
+                                                        key={`lead-${lead.id}`}
+                                                        style={{ gridColumn: 2, gridRow: `${row} / span ${span}` }}
+                                                        onClick={() => handleLongPress(lead)}
+                                                        className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer"
+                                                    >
+                                                        <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${status.bar}`} />
+
+                                                        <div className="flex justify-between items-start pl-2">
+                                                            <div className="flex flex-col">
+                                                                <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
+                                                                    {lead.procedure_name || 'Procedimento'}
+                                                                </h3>
+
+                                                                <div className="flex items-center gap-2 mt-2">
+                                                                    <div className="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">
+                                                                        {(lead.client_name || lead.name || 'C').charAt(0)}
+                                                                    </div>
+                                                                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                                                                        {lead.client_name || lead.name || 'Cliente Sem Nome'}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-3 mt-4">
+                                                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800/50">
+                                                                        <Clock size={12} className="text-slate-400" />
+                                                                        <span className="text-xs text-slate-500 font-medium">
+                                                                            {lead.procedure_duration || lead.duration || 30}m
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <span className={`text-xs font-bold px-2 py-1 rounded-md ${status.badge}`}>
+                                                                        {status.label || lead.status}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mt-1">
+                                                                {status.icon === 'check' ? (
+                                                                    <div className={`${status.iconBg} p-1.5 rounded-full`}>
+                                                                        <Check size={16} className={status.iconColor} />
+                                                                    </div>
+                                                                ) : status.icon === 'hourglass' ? (
+                                                                    <div className={`${status.iconBg} p-1.5 rounded-full`}>
+                                                                        <Hourglass size={16} className={status.iconColor} />
+                                                                    </div>
+                                                                ) : null}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (occupiedTimes.has(time)) return null;
+
+                                            const slot = slotMap.get(time);
+                                            if (!slot) return null;
+
+                                            if (slot.available) {
+                                                return (
+                                                    <div
+                                                        key={`slot-${time}`}
+                                                        style={{ gridColumn: 2, gridRow: row }}
+                                                        className="flex items-center justify-between bg-white/60 dark:bg-slate-900/60 rounded-2xl px-4 border border-dashed border-slate-300 dark:border-slate-700 relative overflow-hidden"
+                                                    >
+                                                        <button
+                                                            onClick={() => {
+                                                                setBookingToEdit(null);
+                                                                setInitialTime(time);
+                                                                setIsCreateModalOpen(true);
+                                                            }}
+                                                            className="flex items-center gap-3 text-left"
+                                                        >
+                                                            <div className="size-7 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                                                                <Plus size={16} />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Disponível</span>
+                                                                <span className="text-xs text-slate-400">Clique para agendar</span>
+                                                            </div>
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setBlockDuration(30);
+                                                                setBlockReason('Bloqueado');
+                                                                setBlockModal({ isOpen: true, time });
+                                                            }}
+                                                            className="bg-slate-200/60 dark:bg-slate-800/60 p-2 rounded-full"
+                                                            title="Bloquear horário"
+                                                        >
+                                                            <Lock size={16} className="text-slate-500" />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (slot.reason === 'lunch' || slot.reason === 'blocked' || slot.reason === 'busy' || slot.reason === 'past') {
+                                                const label = slot.reason === 'lunch'
+                                                    ? 'Almoço'
+                                                    : slot.reason === 'blocked'
+                                                        ? (slot.blockedReason || 'Bloqueado')
+                                                        : slot.reason === 'past'
+                                                            ? 'Passado'
+                                                            : 'Ocupado (sobreposição)';
+                                                const isBusy = slot.reason === 'busy';
+                                                const isLunch = slot.reason === 'lunch';
+                                                const isBlocked = slot.reason === 'blocked';
+                                                const isNoReason = isBlocked && (!slot.blockedReason || slot.blockedReason.trim() === '');
+                                                const isPast = slot.reason === 'past';
+                                                return (
+                                                    <div
+                                                        key={`blocked-${time}`}
+                                                        style={{ gridColumn: 2, gridRow: row }}
+                                                        className={`rounded-2xl p-4 border relative overflow-hidden ${
+                                                            isBusy
+                                                                ? 'border-slate-300/70 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50'
+                                                                : isLunch
+                                                                    ? 'border-amber-300/60 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-900/20'
+                                                                    : isNoReason
+                                                                        ? 'border-slate-400/60 dark:border-slate-600 bg-slate-100/40 dark:bg-slate-900/30'
+                                                                        : 'border-fuchsia-300/60 dark:border-fuchsia-700 bg-fuchsia-50/40 dark:bg-fuchsia-900/20'
+                                                        }`}
+                                                    >
+                                                        <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(135deg,transparent,transparent_6px,rgba(148,163,184,0.25)_6px,rgba(148,163,184,0.25)_12px)]" />
+                                                        <div className="relative flex items-center justify-between pl-2">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
+                                                                <span className="text-xs text-slate-400">Indisponível</span>
+                                                            </div>
+                                                            {isBlocked ? (
+                                                                <button
+                                                                    onClick={() => setUnblockModal({
+                                                                        isOpen: true,
+                                                                        id: slot.blockedId || null,
+                                                                        label,
+                                                                        time,
+                                                                        end: addMinutes(time, 30)
+                                                                    })}
+                                                                    className={`${isNoReason ? 'bg-slate-200/60 dark:bg-slate-800/60' : 'bg-fuchsia-200/40 dark:bg-fuchsia-800/40'} p-2 rounded-full`}
+                                                                    title="Desbloquear horário"
+                                                                >
+                                                                    {isNoReason ? <AlertCircle size={16} className="text-slate-500" /> : <Lock size={16} className="text-fuchsia-400" />}
+                                                                </button>
+                                                            ) : isLunch ? (
+                                                                <button
+                                                                    onClick={() => handleUnlockLunch(time)}
+                                                                    className="bg-amber-200/40 dark:bg-amber-800/40 p-2 rounded-full"
+                                                                    title="Liberar horário de almoço"
+                                                                >
+                                                                    <LockOpen size={16} className="text-amber-500" />
+                                                                </button>
+                                                            ) : (
+                                                                <div className="bg-slate-200/60 dark:bg-slate-800/60 p-2 rounded-full">
+                                                                    {isPast ? <Clock size={16} className="text-slate-500" /> : <Clock size={16} className="text-slate-500" />}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return null;
+                                        })}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Modals */}
+            <AdminBookingModal
+                isOpen={isCreateModalOpen}
+                onClose={() => {
+                    setInitialTime(undefined);
+                    setIsCreateModalOpen(false);
+                }}
+                onSuccess={() => {
+                    setIsCreateModalOpen(false);
+                    // refresh if needed
+                }}
+                initialDate={selectedDay || undefined}
+                initialTime={initialTime}
+                bookingToEdit={bookingToEdit}
+            />
+
+            <ConfirmationModal
+                isOpen={modal.isOpen}
+                onCancel={() => setModal({ isOpen: false, id: null, type: null })}
+                onConfirm={handleUpdate}
+                title={modal.type === 'excluir' ? 'Excluir Agendamento' : 'Confirmar Ação'}
+                message={modal.type === 'excluir' ? 'Tem certeza que deseja excluir?' : `Deseja marcar como ${modal.type}?`}
+            />
+
+            {/* Unblock Modal */}
+            {unblockModal.isOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 bg-black/40 backdrop-blur-md" style={{ zIndex: 9999 }}>
+                    <div className="w-full max-w-sm bg-[#1a0f16]/90 border border-fuchsia-500/30 rounded-3xl shadow-2xl shadow-fuchsia-500/20 p-6 pb-5">
+                        <div className="mx-auto h-1 w-12 rounded-full bg-white/20 mb-5" />
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="size-12 rounded-full bg-fuchsia-600/20 border border-fuchsia-500/40 flex items-center justify-center">
+                                <Lock size={20} className="text-fuchsia-300" />
+                            </div>
+                        </div>
+                        <h3 className="text-center text-lg font-bold text-white mb-2">
+                            Desbloquear Horário?
+                        </h3>
+                        <p className="text-center text-sm text-fuchsia-100/80 mb-5">
+                            Este horário está atualmente bloqueado para:
+                            <span className="block mt-1 font-semibold text-white">
+                                {unblockModal.label || 'Bloqueado'}
+                                {unblockModal.time ? ` • ${unblockModal.time}${unblockModal.end ? `–${unblockModal.end}` : ''}` : ''}
+                            </span>
+                        </p>
+                        <button
+                            onClick={() => {
+                                const id = unblockModal.id;
+                                setUnblockModal({ isOpen: false, id: null });
+                                handleUnblockSlot(id);
+                            }}
+                            className="w-full py-3 rounded-xl font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-500 transition-colors shadow-lg shadow-fuchsia-600/30"
+                        >
+                            Confirmar Desbloqueio
+                        </button>
+                        <button
+                            onClick={() => setUnblockModal({ isOpen: false, id: null })}
+                            className="w-full mt-3 py-3 rounded-xl font-semibold text-fuchsia-100/80 border border-white/10 hover:bg-white/5 transition-colors"
+                        >
+                            Manter Bloqueado
+                        </button>
+                    </div>
+                </div>
             )}
 
-            {/* Day Details Modal */}
-            {selectedDay && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-end bg-black/70 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
-                    <div
-                        className="bg-slate-900 h-full w-full max-w-md shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col relative border-l border-slate-800"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-fuchsia-900/10">
-                            <div>
-                                <p className="text-xs font-bold text-fuchsia-400 uppercase tracking-widest mb-1">Agendamentos</p>
-                                <h3 className="text-2xl font-bold text-white capitalize">
-                                    {selectedDateObj?.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric' })}
-                                </h3>
-                            </div>
-                            <button onClick={() => setSelectedDay(null)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+            {/* Block Modal */}
+            {blockModal.isOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 bg-black/40 backdrop-blur-md" style={{ zIndex: 9999 }}>
+                    <div className="w-full max-w-sm bg-[#1a0f16]/90 border border-fuchsia-500/30 rounded-3xl shadow-2xl shadow-fuchsia-500/20 p-6 pb-5">
+                        <div className="mx-auto h-1 w-12 rounded-full bg-white/20 mb-5" />
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-white">Bloquear Horário</h3>
+                            <button
+                                onClick={() => setBlockModal({ isOpen: false })}
+                                className="text-white/60 hover:text-white"
+                                aria-label="Fechar"
+                            >
                                 ✕
                             </button>
                         </div>
 
-                        {/* List */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 pb-20">
-                            {selectedDayLeads.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-                                    <span className="text-4xl mb-2">😴</span>
-                                    <p>Sem agendamentos.</p>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                                <div className="text-xs text-fuchsia-100/70 mb-1">Início</div>
+                                <div className="text-white font-semibold">{blockModal.time}</div>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                                <div className="text-xs text-fuchsia-100/70 mb-1">Fim</div>
+                                <div className="text-white font-semibold">
+                                    {blockModal.time ? addMinutes(blockModal.time, blockDuration) : '--:--'}
                                 </div>
-                            ) : (
-                                selectedDayLeads.map(lead => (
-                                    <div
-                                        key={lead.id}
-                                        // Integrated Long Press handling here for ALL cards
-                                        onMouseDown={() => {
-                                            const timer = setTimeout(() => handleLongPress(lead), 5000); // 5s Long Press
-                                            setLongPressTimer(timer);
-                                        }}
-                                        onMouseUp={() => longPressTimer && clearTimeout(longPressTimer)}
-                                        onMouseLeave={() => longPressTimer && clearTimeout(longPressTimer)}
-                                        onTouchStart={() => {
-                                            const timer = setTimeout(() => handleLongPress(lead), 5000); // 5s Long Press
-                                            setLongPressTimer(timer);
-                                        }}
-                                        onTouchEnd={() => longPressTimer && clearTimeout(longPressTimer)}
-
-                                        onClick={(e) => {
-                                            // Toggle notes on click
-                                            setExpandedNotesId(expandedNotesId === lead.id ? null : lead.id);
-                                        }}
-                                        className={`
-                                    bg-slate-900 rounded-2xl shadow-lg border border-slate-800 overflow-hidden transition-all duration-300 relative select-none
-                                    ${expandedNotesId === lead.id ? 'ring-2 ring-fuchsia-500/50 shadow-xl' : 'hover:border-slate-700'}
-                                    active:scale-[0.98]
-                                `}
-                                    >
-                                        {/* Status Badge (Absolute Top Right) */}
-                                        <span className={`
-                                      absolute top-0 right-0 px-3 py-1 text-[10px] font-bold uppercase text-white rounded-bl-2xl shadow-sm z-10
-                                      ${lead.status === 'realizado' ? 'bg-emerald-600' :
-                                                lead.status === 'agendado' ? 'bg-blue-600' :
-                                                    lead.status === 'cancelado' ? 'bg-red-600' :
-                                                        'bg-orange-500'}
-                                  `}>
-                                            {lead.status === 'realizado' ? 'Realizado' :
-                                                lead.status === 'agendado' ? 'Agendado' :
-                                                    lead.status === 'cancelado' ? 'Cancelado' : 'Pendente'}
-                                        </span>
-
-                                        {/* Card Header (Time) */}
-                                        <div className="p-4 pb-2 flex justify-between items-start mt-2">
-                                            <div className="flex flex-col">
-                                                <span className="text-2xl font-black text-white leading-none">
-                                                    {lead.appointment_time?.slice(0, 5)}
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 font-bold uppercase mt-1">Horário</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Card Body (Info) */}
-                                        <div className="px-4 py-2">
-                                            <h4 className="font-bold text-white text-lg leading-tight">{lead.name}</h4>
-                                            <p className="text-slate-400 text-sm mb-1">{lead.contact}</p>
-                                            <div className="flex justify-between items-center text-sm font-medium text-slate-300 bg-slate-800 p-2 rounded-lg mt-2 border border-slate-700">
-                                                <span>{lead.procedure_name}</span>
-                                                <span className="font-bold text-fuchsia-400">R$ {lead.price}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Notes (Toggle) */}
-                                        {(lead.admin_notes || expandedNotesId === lead.id) && (
-                                            <div className={`px-4 pb-2 animate-in slide-in-from-top-1 duration-200 ${expandedNotesId === lead.id ? 'block' : 'hidden'}`}>
-                                                <div className="bg-yellow-900/20 p-2 rounded-lg text-xs text-yellow-200 border border-yellow-900/30 flex gap-2">
-                                                    <span>📝</span>
-                                                    <p className="italic">{lead.admin_notes || 'Sem observações.'}</p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Actions Bar */}
-                                        <div className="px-2 py-2 bg-slate-800/50 border-t border-slate-800 flex justify-around items-center gap-1 mt-2">
-
-                                            {/* Common: Notes & Reschedule */}
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setNotesModal({ isOpen: true, lead: lead, notes: lead.admin_notes || '' }); }}
-                                                className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-lg transition-colors"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
-                                            </button>
-
-                                            {(lead.status === 'agendado' || lead.status === 'pendente') && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); setRescheduleModal({ isOpen: true, lead: lead }); }}
-                                                    className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-900/20 rounded-lg transition-colors"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-                                                </button>
-                                            )}
-
-                                            {/* PENDENTE: Approve or Reject (Delete) */}
-                                            {lead.status === 'pendente' && (
-                                                <>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); confirmAction(lead.id, 'agendado'); }}
-                                                        className="p-2 text-slate-400 hover:text-green-400 hover:bg-green-900/20 rounded-lg transition-colors"
-                                                        title="Aprovar (Tornar Agendado)"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); confirmAction(lead.id, 'excluir'); }}
-                                                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-                                                        title="Rejeitar (Excluir)"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                    </button>
-                                                </>
-                                            )}
-
-                                            {/* AGENDADO: Confirm (if Today/Past) or Cancel */}
-                                            {lead.status === 'agendado' && (
-                                                <>
-                                                    {/* Confirm Button Logic (Date < Today OR (Date == Today AND Time <= Now)) */}
-                                                    {(() => {
-                                                        const today = getLocalDate();
-                                                        const leadDate = lead.appointment_date ? lead.appointment_date.toString().split('T')[0] : '';
-                                                        if (!leadDate) return false;
-                                                        if (leadDate < today) return true; // Past day
-                                                        if (leadDate > today) return false; // Future day
-
-                                                        // Today: check time
-                                                        const now = new Date();
-                                                        const currentHm = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-                                                        const leadHm = (lead.appointment_time || '23:59').slice(0, 5);
-                                                        return leadHm <= currentHm;
-                                                    })() ? (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); confirmAction(lead.id, 'realizado'); }}
-                                                            className="p-2 text-slate-400 hover:text-green-400 hover:bg-green-900/20 rounded-lg transition-colors"
-                                                            title="Confirmar Presença (Realizado)"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            disabled
-                                                            className="p-2 text-slate-600 cursor-not-allowed"
-                                                            title="Aguardando data do agendamento"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                        </button>
-                                                    )}
-                                                    {/* Cancel Button */}
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); confirmAction(lead.id, 'cancelado'); }}
-                                                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-                                                        title="Cancelar Agendamento"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    </button>
-                                                </>
-                                            )}
-
-                                            {/* CANCELADO: Delete */}
-                                            {lead.status === 'cancelado' && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); confirmAction(lead.id, 'excluir'); }}
-                                                    className="p-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm shadow-red-900/50"
-                                                    title="Excluir Permanentemente"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                            </div>
                         </div>
 
-                        {/* Floating Action Menu in Drawer */}
+                        <div className="text-xs text-fuchsia-100/70 mb-2">Duração rápida</div>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {[15, 30, 60].map((m) => (
+                                <button
+                                    key={m}
+                                    onClick={() => setBlockDuration(m)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${
+                                        blockDuration === m
+                                            ? 'bg-fuchsia-600 text-white border-fuchsia-500'
+                                            : 'bg-white/5 text-fuchsia-100/80 border-white/10 hover:bg-white/10'
+                                    }`}
+                                >
+                                    {m === 60 ? '1h' : `${m}min`}
+                                </button>
+                            ))}
+                            {(() => {
+                                const canUntilEnd = !!slotMeta.closeTime && !!blockModal.time && (() => {
+                                    if (!slotMeta.closeTime || !blockModal.time) return false;
+                                    const [h1, m1] = blockModal.time.split(':').map(Number);
+                                    const [h2, m2] = slotMeta.closeTime.split(':').map(Number);
+                                    return (h2 * 60 + m2) > (h1 * 60 + m1);
+                                })();
+                                return (
+                                    <button
+                                        onClick={() => {
+                                            if (!blockModal.time || !slotMeta.closeTime) return;
+                                            const [h1, m1] = blockModal.time.split(':').map(Number);
+                                            const [h2, m2] = slotMeta.closeTime.split(':').map(Number);
+                                            const total = (h2 * 60 + m2) - (h1 * 60 + m1);
+                                            if (total > 0) setBlockDuration(total);
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${
+                                            slotMeta.closeTime && blockModal.time && blockDuration > 0 && addMinutes(blockModal.time, blockDuration) === slotMeta.closeTime
+                                                ? 'bg-fuchsia-600 text-white border-fuchsia-500'
+                                                : canUntilEnd
+                                                    ? 'bg-white/5 text-fuchsia-100/80 border-white/10 hover:bg-white/10'
+                                                    : 'bg-white/5 text-white/30 border-white/10'
+                                        }`}
+                                        disabled={!canUntilEnd}
+                                    >
+                                Até o fim
+                                    </button>
+                                );
+                            })()}
+                        </div>
 
+                        <div className="text-xs text-fuchsia-100/70 mb-2">Motivo</div>
+                        <input
+                            value={blockReason}
+                            onChange={(e) => setBlockReason(e.target.value)}
+                            className="w-full mb-5 bg-white/5 text-white placeholder:text-white/40 rounded-xl px-4 py-3 border border-white/10 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60"
+                            placeholder="Ex.: Almoço, Reunião, Feriado"
+                        />
+
+                        <button
+                            onClick={() => {
+                                if (blockModal.time) {
+                                    handleBlockSlot(blockModal.time, blockDuration, blockReason || 'Bloqueado');
+                                }
+                                setBlockModal({ isOpen: false });
+                            }}
+                            className="w-full py-3 rounded-xl font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-500 transition-colors shadow-lg shadow-fuchsia-600/30"
+                        >
+                            Bloquear Horário
+                        </button>
                     </div>
                 </div>
             )}
-
-            {/* Helper Modals */}
-            <ConfirmationModal
-                isOpen={modal.isOpen}
-                title={
-                    modal.type === 'realizado' ? 'Confirmar Presença' :
-                        modal.type === 'cancelado' ? 'Confirmar Cancelamento' : 'Confirmar Ação'
-                }
-                message={
-                    modal.type === 'realizado' ? 'Marcar como realizado?' :
-                        modal.type === 'cancelado' ? 'Deseja realmente cancelar este agendamento?' :
-                            modal.type === 'excluir' ? 'Deseja apagar permanentemente este registro?' : 'Prosseguir?'
-                }
-                onConfirm={handleUpdate}
-                onCancel={() => setModal({ isOpen: false, id: null, type: null })}
-                isDanger={modal.type === 'cancelado' || modal.type === 'excluir'}
-                confirmText="Confirmar"
-            />
 
             <RescheduleModal
                 isOpen={rescheduleModal.isOpen}
                 onClose={() => setRescheduleModal({ isOpen: false, lead: null })}
-                onConfirm={handleReschedule}
-                procedureId={rescheduleModal.lead?.procedure_id}
-                currentDate={rescheduleModal.lead?.appointment_date || ''}
-                currentTime={rescheduleModal.lead?.appointment_time || ''}
-                leadId={rescheduleModal.lead?.id}
+                onConfirm={(date, time) => handleReschedule(date, time)}
+                currentDate={rescheduleModal.lead?.appointment_date}
+                currentTime={rescheduleModal.lead?.appointment_time}
+                procedureId={rescheduleModal.lead?.procedure_id || 0}
             />
 
-            {/* Notes Modal */}
-            {notesModal.isOpen && (
-                <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            📝 Notas Administrativas
-                        </h3>
-                        <textarea
-                            className="w-full h-32 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-fuchsia-500 outline-none resize-none mb-4"
-                            placeholder="Observações internas..."
-                            value={notesModal.notes}
-                            onChange={e => setNotesModal({ ...notesModal, notes: e.target.value })}
-                        ></textarea>
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setNotesModal({ isOpen: false, lead: null, notes: '' })}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={saveNotes}
-                                className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg font-bold hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200"
-                            >
-                                Salvar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ADMIN BOOKING MODAL FOR CREATE & EDIT */}
-            <AdminBookingModal
-                isOpen={isCreateModalOpen}
-                onClose={() => { setIsCreateModalOpen(false); setBookingToEdit(null); }}
-                initialDate={selectedDay || undefined}
-                bookingToEdit={bookingToEdit}
-                onSuccess={() => {
-                    setIsCreateModalOpen(false);
-                    setBookingToEdit(null);
-                    fetch('/api/leads/list')
-                        .then(res => res.json())
-                        .then(data => { if (data.leads) setLeads(data.leads); });
-                }}
-            />
         </div>
     );
 }

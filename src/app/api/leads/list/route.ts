@@ -21,7 +21,12 @@ export async function GET(request: Request) {
     const userIdParam = searchParams.get('user_id');
 
     let query = `
-        SELECT l.*, p.name as procedure_name, p.price as procedure_price, p.duration_minutes as procedure_duration
+        SELECT 
+          l.*,
+          DATE_FORMAT(l.appointment_date, '%Y-%m-%d') as appointment_date,
+          p.name as procedure_name,
+          p.price as procedure_price,
+          p.duration_minutes as procedure_duration
         FROM leads l
         LEFT JOIN procedures p ON l.procedure_id = p.id
     `;

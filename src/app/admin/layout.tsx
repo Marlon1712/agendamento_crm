@@ -5,15 +5,15 @@ import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { SidebarContext } from '@/context/SidebarContext';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  DollarSign, 
-  Scissors, 
-  Clock, 
-  Ban, 
-  Users, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Calendar,
+  DollarSign,
+  Scissors,
+  Clock,
+  Ban,
+  Users,
+  Menu,
   X,
   LogOut
 } from 'lucide-react';
@@ -22,7 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
 
   const navItems = [
@@ -39,108 +39,106 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <SidebarContext.Provider value={{ isOpen: isSidebarOpen, setIsOpen: setIsSidebarOpen, toggleSidebar }}>
-    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row relative text-slate-200">
-      
-      {/* Mobile Top Bar */}
-      <div className="md:hidden bg-slate-900 p-4 flex justify-between items-center shadow-lg border-b border-slate-800 z-30 relative">
-        <div className="flex items-center space-x-3">
-             {session?.user?.image ? (
-                <img 
-                    src={session.user.image} 
-                    alt="Profile" 
-                    className="w-10 h-10 rounded-full border-2 border-fuchsia-500/50"
+      <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row relative text-slate-200">
+
+        {/* Sidebar (Desktop Only) */}
+        <aside className="hidden md:flex fixed md:relative top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-800 p-6 flex-col z-50">
+          <div className="mb-10 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              {session?.user?.image ? (
+                <img
+                  src={session.user.image}
+                  alt="Profile"
+                  className="w-12 h-12 rounded-full border-2 border-fuchsia-500/50 shadow-lg shadow-fuchsia-900/20"
                 />
-             ) : (
-                <div className="w-10 h-10 rounded-full bg-fuchsia-900/50 flex items-center justify-center border-2 border-fuchsia-500/30 text-fuchsia-300 font-bold">
-                    {session?.user?.name?.[0] || 'A'}
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-fuchsia-900/50 flex items-center justify-center border-2 border-fuchsia-500/30 text-fuchsia-300 font-bold text-lg">
+                  {session?.user?.name?.[0] || 'A'}
                 </div>
-             )}
-             <span className="font-bold text-xl text-fuchsia-500">ManicureApp</span> 
-        </div>
-        <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 text-slate-400 hover:bg-slate-800 rounded-lg"
-        >
-            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-white font-bold leading-tight">{session?.user?.name?.split(' ')[0]}</span>
+                <span className="text-xs text-slate-500">Administrador</span>
+              </div>
+            </div>
+            {/* Divider */}
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+          </div>
 
-      {/* Sidebar Overlay (Mobile) */}
-      {isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-      )}
+          <nav className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`
+                            flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                            ${isActive
+                      ? 'bg-gradient-to-r from-fuchsia-600 to-fuchsia-700 text-white shadow-lg shadow-fuchsia-900/20'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }
+                        `}
+                >
+                  <span className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400 transition-colors'}`}>
+                    {item.icon}
+                  </span>
+                  <span className="font-medium">{item.name}</span>
 
-      {/* Sidebar */}
-      <aside className={`
-            fixed md:relative top-0 right-0 md:left-0 h-full w-56 md:w-64 bg-slate-900 border-l md:border-l-0 md:border-r border-slate-800 p-6 flex-shrink-0 z-50 transition-transform duration-300 ease-in-out md:translate-x-0
-            ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
-      `}>
-        <div className="mb-10 flex flex-col gap-4 hidden md:flex">
-             <div className="flex items-center gap-3">
-                {session?.user?.image ? (
-                    <img 
-                        src={session.user.image} 
-                        alt="Profile" 
-                        className="w-12 h-12 rounded-full border-2 border-fuchsia-500/50 shadow-lg shadow-fuchsia-900/20"
-                    />
-                ) : (
-                    <div className="w-12 h-12 rounded-full bg-fuchsia-900/50 flex items-center justify-center border-2 border-fuchsia-500/30 text-fuchsia-300 font-bold text-lg">
-                        {session?.user?.name?.[0] || 'A'}
-                    </div>
-                )}
-                <div className="flex flex-col">
-                    <span className="text-white font-bold leading-tight">{session?.user?.name?.split(' ')[0]}</span>
-                    <span className="text-xs text-slate-500">Administrador</span>
-                </div>
-             </div>
-             {/* Divider */}
-             <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
-        </div>
-        
-        <div className="md:hidden mb-6 flex justify-between items-center">
-             <span className="text-slate-500 text-sm uppercase font-bold tracking-wider">Menu</span>
-             <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400">
-                <X size={20} />
-             </button>
-        </div>
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-        <nav className="space-y-2">
-          {navItems.map((item) => (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              onClick={() => setIsSidebarOpen(false)}
-              className={`flex items-center space-x-3 p-3 rounded-xl transition-all font-medium ${pathname === item.href ? 'bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 shadow-[0_0_15px_rgba(232,121,249,0.1)]' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}`}
+          <div className="mt-auto pt-6 border-t border-slate-800">
+            <Link
+              href="/api/auth/signout"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-all duration-200"
             >
-              <span className="opacity-80">{item.icon}</span>
-              <span>{item.name}</span>
+              <LogOut size={20} />
+              <span className="font-medium">Sair</span>
             </Link>
-          ))}
-        </nav>
+          </div>
+        </aside>
 
-        {/* Footer Logout Button */}
-        <div className="absolute bottom-6 left-6 right-6">
-            <button 
-                onClick={async () => {
-                   await fetch('/api/auth/logout', { method: 'POST' });
-                   window.location.href = '/admin/login';
-                }}
-                className="flex items-center space-x-3 p-3 w-full rounded-xl text-slate-500 hover:bg-red-900/10 hover:text-red-400 transition-colors"
-            >
-                 <LogOut size={20} />
-                 <span>Sair</span>
-            </button>
+        {/* Main Content */}
+        <main className="flex-1 w-full relative z-0 pb-28 md:pb-0 overflow-x-hidden">
+          <div className="p-4 md:p-8 max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
+
+        {/* Bottom Navigation (Mobile Only) */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-2xl z-50 flex justify-between items-center px-6 py-3 pb-6 rounded-t-3xl">
+          <Link href="/admin/dashboard" className={`flex flex-col items-center gap-1 transition-colors ${pathname === '/admin/dashboard' ? 'text-fuchsia-600 dark:text-fuchsia-500' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+            <LayoutDashboard size={24} strokeWidth={pathname === '/admin/dashboard' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold">Início</span>
+          </Link>
+          <Link href="/admin/calendar" className={`flex flex-col items-center gap-1 transition-colors ${pathname === '/admin/calendar' ? 'text-fuchsia-600 dark:text-fuchsia-500' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+            <Calendar size={24} strokeWidth={pathname === '/admin/calendar' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold">Agenda</span>
+          </Link>
+
+          {/* Center FAB Style for Services or Add? Keeping standard linear as per image request */}
+          <Link href="/admin/services" className={`flex flex-col items-center gap-1 transition-colors ${pathname === '/admin/services' ? 'text-fuchsia-600 dark:text-fuchsia-500' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+            <Scissors size={24} strokeWidth={pathname === '/admin/services' ? 2.5 : 2} className={pathname === '/admin/services' ? '-rotate-90' : ''} />
+            <span className="text-[10px] font-bold">Serviços</span>
+          </Link>
+
+          <Link href="/admin/finance" className={`flex flex-col items-center gap-1 transition-colors ${pathname === '/admin/finance' ? 'text-fuchsia-600 dark:text-fuchsia-500' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+            <DollarSign size={24} strokeWidth={pathname === '/admin/finance' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold">Financeiro</span>
+          </Link>
+          <Link href="/admin/users" className={`flex flex-col items-center gap-1 transition-colors ${pathname === '/admin/users' ? 'text-fuchsia-600 dark:text-fuchsia-500' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+            <Users size={24} strokeWidth={pathname === '/admin/users' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold">Perfil</span>
+          </Link>
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+      </div>
     </SidebarContext.Provider>
   );
 }
