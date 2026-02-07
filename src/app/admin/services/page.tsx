@@ -1,31 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Calendar from '../../components/Calendar';
-import CalendarRange from '../../components/CalendarRange';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { 
-    Clock, 
     Pencil, 
     Trash2, 
-    Sparkles, 
-    MoveUp, 
-    MoveDown, 
     Search,
     Plus,
-    Tag,
-    Gift,
-    Layers,
     X,
     Check,
-    Calculator,
-    Percent,
-    DollarSign
+    ArrowLeft
 } from 'lucide-react';
 
 export default function AdminServices() {
   const [procedures, setProcedures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [serviceColor, setServiceColor] = useState<'pink' | 'blue' | 'green' | 'purple' | 'yellow'>('pink');
+  const [onlineEnabled, setOnlineEnabled] = useState(true);
   
   // State for Form
   const [form, setForm] = useState({ 
@@ -43,10 +36,6 @@ export default function AdminServices() {
     promoGiftItem: '',
     promoSlots: ''
   });
-
-  // Promo Calculator State
-
-  const [promoPercent, setPromoPercent] = useState<string>('');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -172,8 +161,10 @@ export default function AdminServices() {
     });
     setEditingId(null);
     setInsertIndex(null);
-    setPromoPercent('');
     setShowCalendar(false);
+    setShowFormModal(false);
+    setServiceColor('pink');
+    setOnlineEnabled(true);
   };
 
   const handleEdit = (proc: any) => {
@@ -204,20 +195,9 @@ export default function AdminServices() {
         promoSlots: proc.promo_slots || ''
     });
 
-    // Calc percent for initial state if promo exists
-    if (isPromo && proc.promo_price && proc.price) {
-        const p = parseFloat(proc.price);
-        const pp = parseFloat(proc.promo_price);
-        if (p > 0) {
-            const pct = ((p - pp) / p) * 100;
-            setPromoPercent(pct.toFixed(0)); // Start in percent mode visually
-        }
-    } else {
-        setPromoPercent('');
-    }
-
     // Scroll removed
     setShowCalendar(false);
+    setShowFormModal(true);
   };
 
   const handleDelete = async (id: number) => {
@@ -231,6 +211,7 @@ export default function AdminServices() {
       resetForm();
       setEditingId(-1); // -1 marks "New"
       // Scroll removed
+      setShowFormModal(true);
   };
 
   const cancelEdit = () => {
@@ -293,477 +274,290 @@ export default function AdminServices() {
   };
 
   const renderForm = (isNew: boolean = false) => (
-    <div className="bg-slate-800 p-4 w-full h-full flex flex-col gap-4 animate-in fade-in duration-200">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 h-full">
-            {/* Header: Title */}
-            <div className="flex justify-between items-center mb-1">
-                <h3 className="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-wider">
-                    {editingId === -1 ? <Sparkles size={16} className="text-fuchsia-400"/> : <Pencil size={16} className="text-fuchsia-400"/>}
-                    {editingId === -1 ? 'Novo' : 'Editar'}
-                </h3>
-            </div>
+    <div className="bg-transparent w-full h-full flex flex-col gap-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <label className="text-[#1b0d13] dark:text-gray-200 text-base font-medium leading-normal">
+            Nome do Serviço
+          </label>
+          <input
+            className="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-xl border border-[#e7cfd9] dark:border-[#5e3a4b] bg-white dark:bg-[#2d1520] h-14 p-[15px] text-base font-normal leading-normal text-[#1b0d13] dark:text-white placeholder:text-[#9a4c6c] dark:placeholder:text-[#d48fa8] focus:outline-0 focus:ring-2 focus:ring-[#ee2b7c]/20 focus:border-[#ee2b7c] transition-all shadow-sm"
+            placeholder="Ex: Pedicure Express"
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+        </div>
 
-            {/* 1. Name */}
-            <div>
-                <label className="text-[10px] text-slate-400 font-bold uppercase">Nome</label>
-                <input 
-                    className="w-full bg-slate-900 border border-slate-700/50 rounded-lg p-2 text-white text-sm outline-none focus:border-fuchsia-500 transition-colors" 
-                    value={form.name} 
-                    onChange={e => setForm({...form, name: e.target.value})}
-                    required
-                    placeholder="Nome do Serviço"
+        <div className="flex flex-col gap-2">
+          <label className="text-[#1b0d13] dark:text-gray-200 text-base font-medium leading-normal">
+            Descrição <span className="text-sm font-normal text-[#9a4c6c] dark:text-[#d48fa8] ml-1">(Opcional)</span>
+          </label>
+          <textarea
+            className="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-xl border border-[#e7cfd9] dark:border-[#5e3a4b] bg-white dark:bg-[#2d1520] min-h-[120px] p-[15px] text-base font-normal leading-normal text-[#1b0d13] dark:text-white placeholder:text-[#9a4c6c] dark:placeholder:text-[#d48fa8] focus:outline-0 focus:ring-2 focus:ring-[#ee2b7c]/20 focus:border-[#ee2b7c] transition-all shadow-sm"
+            placeholder="Detalhes sobre o procedimento, produtos usados..."
+            value={form.description || ''}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-[#1b0d13] dark:text-gray-200 text-base font-medium leading-normal">
+            Preço (R$)
+          </label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9a4c6c] dark:text-[#d48fa8] font-medium">R$</span>
+            <input
+              className="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-xl border border-[#e7cfd9] dark:border-[#5e3a4b] bg-white dark:bg-[#2d1520] h-14 pl-12 pr-4 text-base font-normal leading-normal text-[#1b0d13] dark:text-white placeholder:text-[#9a4c6c] dark:placeholder:text-[#d48fa8] focus:outline-0 focus:ring-2 focus:ring-[#ee2b7c]/20 focus:border-[#ee2b7c] transition-all shadow-sm"
+              placeholder="0,00"
+              type="number"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <h3 className="text-[#1b0d13] dark:text-gray-200 text-base font-medium leading-normal">
+            Duração Estimada
+          </h3>
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {[15, 30, 45, 60, 90].map((m) => (
+              <label key={m} className="cursor-pointer group">
+                <input
+                  className="peer sr-only"
+                  name="duration"
+                  type="radio"
+                  value={m}
+                  checked={form.duration === m}
+                  onChange={() => setForm({ ...form, duration: m })}
                 />
-            </div>
+                <div className="px-5 py-2.5 rounded-full border border-[#e7cfd9] dark:border-[#5e3a4b] bg-white dark:bg-[#2d1520] text-[#1b0d13] dark:text-white text-sm font-medium transition-all peer-checked:bg-[#ee2b7c] peer-checked:text-white peer-checked:border-[#ee2b7c] group-hover:border-[#ee2b7c]/50 whitespace-nowrap shadow-sm">
+                  {m === 60 ? '1 h' : m === 90 ? '1h 30m' : `${m} min`}
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
 
-            {/* 2. Description */}
-            <div>
-                <label className="text-[10px] text-slate-400 font-bold uppercase">Descrição</label>
-                <textarea 
-                    className="w-full bg-slate-900 border border-slate-700/50 rounded-lg p-2 text-slate-300 text-sm outline-none focus:border-fuchsia-500 transition-colors resize-none h-16" 
-                    value={form.description || ''} 
-                    onChange={e => setForm({...form, description: e.target.value})}
-                    placeholder="Detalhes para o cliente..."
+        <div className="h-px bg-[#e7cfd9]/50 dark:bg-white/10 w-full" />
+
+        <div className="flex flex-col gap-3">
+          <h3 className="text-[#1b0d13] dark:text-gray-200 text-base font-medium leading-normal">
+            Cor na Agenda
+          </h3>
+          <div className="flex gap-4 items-center justify-start flex-wrap">
+            {[
+              { key: 'pink', color: '#ffb7d5', check: '#ee2b7c' },
+              { key: 'blue', color: '#b7d5ff', check: '#3b82f6' },
+              { key: 'green', color: '#b7ffce', check: '#22c55e' },
+              { key: 'purple', color: '#e0b7ff', check: '#a855f7' },
+              { key: 'yellow', color: '#fffab7', check: '#eab308' }
+            ].map((c) => (
+              <label key={c.key} className="cursor-pointer relative">
+                <input
+                  className="peer sr-only"
+                  name="color"
+                  type="radio"
+                  value={c.key}
+                  checked={serviceColor === c.key}
+                  onChange={() => setServiceColor(c.key as any)}
                 />
-            </div>
-
-            {/* 3. Note (Highlighted) */}
-            <div>
-                <label className="text-[10px] text-fuchsia-400 font-bold uppercase flex items-center gap-1"><Tag size={10}/> Destaque / Nota</label>
-                <input 
-                    className="w-full bg-fuchsia-900/20 border border-fuchsia-500/30 rounded-lg p-2 text-fuchsia-200 text-sm outline-none focus:border-fuchsia-500 transition-colors placeholder:text-fuchsia-700/50" 
-                    value={form.observation || ''} 
-                    onChange={e => setForm({...form, observation: e.target.value})}
-                    placeholder="Ex: Mais Popular, Promoção..."
-                />
-            </div>
-
-            {/* 4. Duration | Price */}
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                     <label className="text-[10px] text-slate-400 font-bold uppercase">Duração (min)</label>
-                     <input type="number" step="5" className="w-full bg-slate-900 border border-slate-700/50 rounded-lg p-2 text-white text-sm outline-none focus:border-fuchsia-500 transition-colors" value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} />
+                <div
+                  className="size-11 rounded-full transition-transform hover:scale-110 peer-checked:ring-2 peer-checked:ring-offset-2 peer-checked:ring-[#ee2b7c] dark:peer-checked:ring-offset-[#221018] flex items-center justify-center"
+                  style={{ backgroundColor: c.color }}
+                >
+                  <Check size={18} className="opacity-0 peer-checked:opacity-100" style={{ color: c.check }} />
                 </div>
-                <div>
-                     <label className="text-[10px] text-slate-400 font-bold uppercase">Preço (R$)</label>
-                     <input type="number" step="0.01" className="w-full bg-slate-900 border border-slate-700/50 rounded-lg p-2 text-white text-sm outline-none focus:border-fuchsia-500 transition-colors" value={form.price} onChange={e => setForm({...form, price: parseFloat(e.target.value)})} />
-                </div>
-            </div>
+              </label>
+            ))}
+          </div>
+        </div>
 
-            {/* 5. Offer Switch & Type */}
-            <div className="flex items-center gap-2 py-2 border-t border-slate-700/50 mt-1">
-                <div className="flex items-center gap-2">
-                    <button 
-                        type="button"
-                        onClick={() => {
-                             const newVal = !form.isPromotional;
-                             const today = new Date().toISOString().split('T')[0];
-                             setForm({...form, isPromotional: newVal, promoEndDate: newVal && !form.promoEndDate ? today : form.promoEndDate});
-                        }}
-                        className={`w-8 h-4 rounded-full p-0.5 transition-colors relative flex-shrink-0 ${form.isPromotional ? 'bg-fuchsia-500' : 'bg-slate-700'}`}
-                    >
-                        <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${form.isPromotional ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </button>
-                    <span className={`text-[10px] font-bold uppercase ${form.isPromotional ? 'text-fuchsia-400' : 'text-slate-500'}`}>Ativar Oferta ?</span>
-                </div>
+        <div className="flex items-center justify-between py-2">
+          <div className="flex flex-col">
+            <span className="text-[#1b0d13] dark:text-gray-200 text-base font-medium">Agendamento Online</span>
+            <span className="text-[#9a4c6c] dark:text-[#d48fa8] text-sm">Visível para clientes no app</span>
+          </div>
+          <label className="inline-flex items-center cursor-pointer">
+            <input
+              className="sr-only peer"
+              type="checkbox"
+              checked={onlineEnabled}
+              onChange={(e) => setOnlineEnabled(e.target.checked)}
+            />
+            <div className="relative w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#ee2b7c]/20 dark:peer-focus:ring-[#ee2b7c]/30 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[#ee2b7c]" />
+          </label>
+        </div>
 
-                {/* Offer Type Selector */}
-                {form.isPromotional && (
-                    <div className="flex-1 animate-in slide-in-from-left-2 fade-in overflow-hidden">
-                        <div className="flex bg-slate-900 border border-slate-700 rounded-lg p-0.5 gap-0.5 w-full">
-                            <button
-                                type="button" 
-                                onClick={() => setForm({...form, promoType: 'discount'})}
-                                className={`flex-1 py-1 rounded-md text-[9px] font-bold uppercase flex items-center justify-center gap-1 transition-colors ${form.promoType === 'discount' ? 'bg-fuchsia-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                            >
-                                <Percent size={10} /> Desc.
-                            </button>
-                             <button
-                                type="button" 
-                                onClick={() => setForm({...form, promoType: 'gift'})}
-                                className={`flex-1 py-1 rounded-md text-[9px] font-bold uppercase flex items-center justify-center gap-1 transition-colors ${form.promoType === 'gift' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                            >
-                                <Gift size={10} /> Brinde
-                            </button>
-                             <button
-                                type="button" 
-                                onClick={() => setForm({...form, promoType: 'combo'})}
-                                className={`flex-1 py-1 rounded-md text-[9px] font-bold uppercase flex items-center justify-center gap-1 transition-colors ${form.promoType === 'combo' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                            >
-                                <Layers size={10} /> Combo
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* 6. Promo Fields - One Line Layout */}
-            {form.isPromotional && (
-                <div className="flex flex-col gap-3 animate-in slide-in-from-top-2">
-                     <div className="grid grid-cols-3 gap-2">
-                          <div className="relative col-span-1">
-                             <div className="flex justify-between items-center mb-1">
-                                 <label className="text-[10px] text-fuchsia-400 font-bold uppercase truncate">Preço Promo</label>
-                             </div>
-                             
-                             <div className="relative">
-                                <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    className="w-full bg-slate-900 border border-fuchsia-500/50 rounded p-2 text-fuchsia-400 font-bold outline-none focus:border-fuchsia-500 text-sm" 
-                                    value={form.promoPrice} 
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        setForm({...form, promoPrice: val});
-                                        // Update percent state
-                                        if (form.price > 0 && val) {
-                                            const p = parseFloat(val);
-                                            const pct = ((form.price - p) / form.price) * 100;
-                                            setPromoPercent(pct.toFixed(0));
-                                        }
-                                    }} 
-                                    placeholder="0.00"
-                                />
-                             </div>
-                          </div>
-
-                          <div className="relative col-span-1">
-                             <div className="flex justify-between items-center mb-1">
-                                 <label className="text-[10px] text-fuchsia-400 font-bold uppercase truncate">% Off</label>
-                             </div>
-
-                             <div className="relative">
-                                <input 
-                                    type="number" 
-                                    className="w-full bg-slate-900 border border-fuchsia-500/50 rounded p-2 text-fuchsia-400 font-bold outline-none focus:border-fuchsia-500 text-sm pr-4" 
-                                    value={promoPercent} 
-                                    onChange={e => {
-                                        const pct = e.target.value;
-                                        setPromoPercent(pct);
-                                        // Auto Calc Price
-                                        if (form.price > 0 && pct) {
-                                            const p = parseFloat(pct);
-                                            const newVal = form.price - (form.price * (p / 100));
-                                            setForm({...form, promoPrice: newVal.toFixed(2)});
-                                        }
-                                    }}
-                                    placeholder="0"
-                                />
-                                <span className="absolute right-1 top-2 text-fuchsia-500 text-xs font-bold">%</span>
-                            </div>
-                          </div>
-
-                          <div className="col-span-1">
-                             <label className="text-[10px] text-slate-400 font-bold uppercase mb-1 block truncate">Vagas</label>
-                             <input type="number" className="w-full bg-slate-900 border border-slate-700/50 rounded p-2 text-white text-sm outline-none focus:border-green-500" value={form.promoSlots} onChange={e => setForm({...form, promoSlots: e.target.value})} placeholder="Ilimitado" />
-                          </div>
-                     </div>
-                                        <div className="mt-2">
-                          <div className="flex justify-between items-center mb-1">
-                                <label className="text-[10px] text-slate-500 font-bold uppercase block">Validade</label>
-                                <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => {
-                                      // Toggle Logic relying on Explicit State
-                                      if (form.promoHasDeadline) {
-                                          setForm({...form, promoHasDeadline: false, promoEndDate: ''});
-                                      } else {
-                                          const today = new Date().toISOString().split('T')[0];
-                                          // Keep existing date if accidentally toggled, or set today using existing logic
-                                          const nextEnd = form.promoEndDate || today;
-                                          setForm({...form, promoHasDeadline: true, promoEndDate: nextEnd});
-                                      }
-                                }}>
-                                    <div className={`w-3 h-3 rounded border flex items-center justify-center transition-colors ${!form.promoHasDeadline ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-slate-600'}`}>
-                                        {!form.promoHasDeadline && <Check size={8} className="text-white" />}
-                                    </div>
-                                    <span className={`text-[10px] font-bold uppercase transition-colors ${!form.promoHasDeadline ? 'text-fuchsia-400' : 'text-slate-500'}`}>Sem Prazo</span>
-                                </div>
-                          </div>
-                          
-                          {/* Use Specific State for Condition */}
-                          {!form.promoHasDeadline ? (
-                              <div className="w-full bg-slate-900 border border-slate-700/50 rounded-lg p-3 flex flex-col gap-1 animate-in fade-in">
-                                   <label className="text-[9px] text-fuchsia-500 font-bold uppercase">Início da Oferta</label>
-                                   <input 
-                                     type="date" 
-                                     className="bg-transparent text-white text-sm outline-none font-bold w-full"
-                                     value={form.promoStartDate}
-                                     onChange={(e) => setForm({...form, promoStartDate: e.target.value})}
-                                   />
-                              </div>
-                          ) : (
-                             <CalendarRange 
-                                startDate={form.promoStartDate}
-                                endDate={form.promoEndDate}
-                                onChange={(start, end) => setForm({...form, promoStartDate: start, promoEndDate: end})}
-                                compact={true}
-                             />
-                          )}
-                     </div>
-                </div>
-            )}
-
-            {/* Bottom Buttons: Symmetrical */}
-            <div className="mt-4 grid grid-cols-2 gap-4">
-                 <button type="button" onClick={cancelEdit} className="flex items-center justify-center p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
-                    <X size={20} />
-                 </button>
-                 <button type="submit" className="flex items-center justify-center p-3 rounded-xl bg-fuchsia-600 text-white hover:bg-fuchsia-500 shadow-lg shadow-fuchsia-900/30 transition-all active:scale-95">
-                    <Check size={20} />
-                 </button>
-            </div>
-        </form>
+        <button
+          type="submit"
+          className="mt-2 flex w-full items-center justify-center rounded-xl bg-[#ee2b7c] h-14 px-4 text-white text-base font-bold shadow-lg shadow-[#ee2b7c]/30 hover:bg-[#d81f6f] active:scale-[0.98] transition-all"
+        >
+          Salvar Serviço
+        </button>
+      </form>
     </div>
   );
 
+  const filteredProcedures = procedures.filter((proc) =>
+    proc.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getServiceImage = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('pedicure') || lower.includes('pé')) {
+      return "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=800&auto=format&fit=crop";
+    }
+    if (lower.includes('alongamento') || lower.includes('gel')) {
+      return "https://images.unsplash.com/photo-1519415943484-9fa1873496d4?q=80&w=800&auto=format&fit=crop";
+    }
+    if (lower.includes('spa')) {
+      return "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?q=80&w=800&auto=format&fit=crop";
+    }
+    return "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=800&auto=format&fit=crop";
+  };
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white mb-6">Gerenciar Serviços</h1>
+    <div className="bg-[#f8f6f7] dark:bg-[#221018] min-h-screen text-gray-900 dark:text-gray-100 flex flex-col">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f8f6f7]/95 dark:bg-[#221018]/95 backdrop-blur-sm border-b border-gray-100 dark:border-white/5 px-4 py-3 flex items-center justify-between">
+        <button
+          aria-label="Voltar"
+          className="flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-gray-800 dark:text-white"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-2">
+          Gestão de Serviços
+        </h1>
+        <button
+          onClick={() => {
+            resetForm();
+            setEditingId(-1);
+            setInsertIndex(0);
+            setShowFormModal(true);
+          }}
+          className="flex items-center justify-end text-[#ee2b7c] text-sm font-bold tracking-wide hover:opacity-80 transition-opacity"
+        >
+          Criar
+        </button>
+      </header>
 
-      {/* Form */}
-        {/* Form Logic Handled Inline */}
+      <main className="flex-1 w-full max-w-md mx-auto px-4 pt-20 pb-24 flex flex-col gap-6 overflow-y-auto">
+        <div className="relative">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
+            <Search size={18} />
+          </span>
+          <input
+            className="w-full bg-white dark:bg-[#2f1b25] border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none transition-all"
+            placeholder="Buscar serviço..."
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-      {/* List */}
-      <h2 className="font-bold text-slate-500 text-sm uppercase mb-4 tracking-wider">Serviços Ativos (Ordem de Exibição)</h2>
-      
-      {/* Grid Layout - Increased Gap for Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-12 mt-10">
+        {(editingId !== null) && (
+          <div className="rounded-2xl border border-[#ee2b7c]/20 bg-white dark:bg-[#2f1b25] shadow-sm p-4">
+            {renderForm(true)}
+          </div>
+        )}
 
-        {/* Empty State Action */}
-        {procedures.length === 0 && !loading && (
-             <div className="col-span-full mb-6">
-                {editingId === -1 ? (
-                    renderForm(true)
-                ) : (
-                    <button 
-                        onClick={() => {
-                            resetForm();
-                            setEditingId(-1);
-                            setInsertIndex(0);
-                        }}
-                        className="w-full py-12 border-2 border-dashed border-slate-700 hover:border-fuchsia-500 rounded-2xl flex flex-col items-center justify-center text-slate-500 hover:text-fuchsia-500 transition-all gap-4 group"
+        <div className="flex flex-col gap-4">
+          {filteredProcedures.map((proc: any, index: number) => (
+            <article
+              key={proc.id}
+              id={`service-card-${proc.id}`}
+              className="group relative overflow-hidden rounded-xl bg-white dark:bg-[#2f1b25] p-4 shadow-sm hover:shadow-md transition-all border border-transparent hover:border-[#ee2b7c]/10 dark:border-white/5"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col flex-[2_2_0px] gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#ee2b7c] shadow-[0_0_8px_rgba(238,43,124,0.4)]" />
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">
+                      {proc.name}
+                    </h3>
+                  </div>
+                  <p className="text-[#ee2b7c] text-sm font-medium leading-normal flex items-center gap-1">
+                    R$ {parseFloat(proc.price).toFixed(2)}
+                    <span className="text-gray-400 dark:text-gray-500">•</span>
+                    <span className="text-gray-500 dark:text-gray-400 font-normal">
+                      {proc.duration_minutes} min
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <button
+                      onClick={() => handleEdit(proc)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-white/5 hover:bg-[#ee2b7c]/10 hover:text-[#ee2b7c] text-gray-600 dark:text-gray-300 text-xs font-semibold transition-colors"
                     >
-                        <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Plus size={32} />
-                        </div>
-                        <span className="font-bold uppercase tracking-widest">Criar Primeiro Serviço</span>
+                      <Pencil size={14} />
+                      Editar
                     </button>
-                )}
-             </div>
-        )}
-
-        {procedures.map((proc: any, index: number) => {
-            // Render Edit Form In-Place (Existing Item)
-            if (editingId === proc.id) {
-                return (
-                    <div key={proc.id} className="relative rounded-2xl flex flex-col overflow-hidden border shadow-lg bg-slate-900 border-fuchsia-500/30 ring-1 ring-fuchsia-500/30">
-                         {renderForm()}
-                    </div>
-                );
-            }
-            
-            // Logic for In-Place New Item Form
-            const isInsertingHere = editingId === -1 && insertIndex === index;
-            
-
-            const now = new Date();
-            const nowTS = now.getTime();
-            const startRaw = proc.promo_start_date ? new Date(proc.promo_start_date) : null;
-            const endRaw = proc.promo_end_date ? new Date(proc.promo_end_date) : null;
-            
-            const startsInFuture = startRaw && startRaw.getTime() > nowTS;
-            const isPromoPeriod = !!proc.is_promotional && 
-                (!startRaw || startRaw.getTime() <= nowTS) &&
-                (!endRaw || endRaw.getTime() >= nowTS);
-
-            const promoType = proc.promo_type || 'discount';
-            const isGift = promoType === 'gift';
-            const isCombo = promoType === 'combo';
-
-            const isFuture = !!startsInFuture && !!proc.is_promotional;
-            const isActive = isPromoPeriod && !isFuture;
-            
-            // Calculate Percent for Display
-            let discountPercent = 0;
-            if (isActive && proc.price > 0 && proc.promo_price > 0) {
-                discountPercent = Math.round(((proc.price - proc.promo_price) / proc.price) * 100);
-            }
-
-            const currentTouchOffset = (swipedId === proc.id) ? touchOffset : 0; 
-            const isDeleting = currentTouchOffset < -50;
-
-            return (
-            <div id={`service-card-${proc.id}`} key={proc.id} className="relative group/item flex flex-col gap-6">
-                
-                {/* IN-PLACE FORM RENDER: If inserting at this index, show the form BEFORE this card */}
-                {isInsertingHere && (
-                    <div className="relative rounded-2xl flex flex-col overflow-hidden border shadow-lg bg-slate-900 border-fuchsia-500/30 ring-1 ring-fuchsia-500/30 animate-in slide-in-from-top-4 fade-in duration-300">
-                         {renderForm(true)}
-                    </div>
-                )}
-
-                <div className="relative">
-                    {/* Insert Zone (Center) - Rectangular Button */}
-                    {/* Only show if NOT editing any item (to prevent overlap) */}
-                    {editingId === null && (
-                        <div className="absolute -top-[34px] left-0 right-0 flex justify-center z-10">
-                            <button 
-                                onClick={() => {
-                                    resetForm();
-                                    setEditingId(-1);
-                                    setInsertIndex(index);
-                                }}
-                                className="w-1/2 h-6 rounded-lg bg-slate-900 border border-dashed border-slate-600 text-slate-500 flex items-center justify-center opacity-60 hover:opacity-100 transition-all hover:scale-105 hover:border-fuchsia-500 hover:text-fuchsia-500 hover:shadow shadow-sm shadow-fuchsia-500/10"
-                                title="Inserir Serviço Aqui"
-                            >
-                                <Plus size={14} />
-                            </button>
-                        </div>
-                    )}
-
-                <div 
-                    draggable={editingId === null}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragEnd={handleDragEnd}
-                    onTouchStart={(e) => onTouchStart(e, proc.id)}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={() => onTouchEnd(proc.id)}
-                    style={{ 
-                        transform: (currentTouchOffset !== 0 && touchStart) ? `translateX(${currentTouchOffset}px)` : 'none',
-                        opacity: isDeleting ? 0.5 : 1
-                    }}
-                    className={`
-                        relative rounded-2xl flex flex-col overflow-hidden transition-all duration-200
-                        border shadow-lg hover:shadow-2xl bg-slate-900 cursor-grab active:cursor-grabbing select-none
-                        ${isActive ? 'border-fuchsia-500/30' : 'border-slate-800'}
-                        ${draggedItem === index ? 'opacity-50 scale-95 border-dashed border-fuchsia-500' : ''}
-                        ${isDeleting ? 'bg-red-900/10 border-red-500/50' : ''}
-                    `}
-                >
-                    {/* Deleting Indicator */}
-                    {isDeleting && (
-                         <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center bg-red-600/20 text-red-500 z-50">
-                             <Trash2 size={24} />
-                         </div>
-                    )}
-
-                    {/* Badges */}
-                    {isActive && (
-                        <div className="absolute top-0 right-0 z-20 flex flex-col items-end">
-                            <div className={`
-                                ${proc.promo_type === 'gift' ? 'bg-gradient-to-l from-orange-600 to-orange-500' : 
-                                  proc.promo_type === 'combo' ? 'bg-gradient-to-l from-blue-600 to-blue-500' : 
-                                  'bg-gradient-to-l from-fuchsia-600 to-fuchsia-500'} 
-                                text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm flex items-center gap-1
-                            `}>
-                                {proc.promo_type === 'gift' && <Gift size={10} />}
-                                {proc.promo_type === 'combo' && <Layers size={10} />}
-                                {(!proc.promo_type || proc.promo_type === 'discount') && <Tag size={10} />}
-                                {proc.promo_type === 'gift' ? 'BRINDE' : proc.promo_type === 'combo' ? 'COMBO' : 'OFERTA'}
-                            </div>
-                            
-                            {/* Discount Badge */}
-                            {discountPercent > 0 && proc.promo_type !== 'gift' && (
-                                <div className="bg-yellow-400 text-black text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm mt-0.5">
-                                    {discountPercent}% OFF
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    
-                    <div className="p-5 flex flex-col h-full relative z-10">
-                         <div className="flex justify-between items-start mb-2">
-                            <h4 className={`font-bold text-lg leading-tight w-full pr-8 ${isActive ? 'text-white' : 'text-slate-200'}`}>
-                                {proc.name}
-                            </h4>
-                         </div>
-
-                         {/* Highlight Note */}
-                         {proc.observation && (
-                            <div className="mb-3">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-fuchsia-900/30 text-fuchsia-400 border border-fuchsia-500/20">
-                                    <Sparkles size={10} /> {proc.observation}
-                                </span>
-                            </div>
-                         )}
-
-                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-xs px-2 py-1 rounded-md bg-slate-800 text-slate-400 font-medium flex items-center gap-1 border border-slate-700">
-                                <Clock size={12} /> {proc.duration_minutes} min
-                            </span>
-                            {/* Slots Display */}
-                            {isActive && proc.promo_slots > 0 && (
-                                <span className="text-xs px-2 py-1 rounded-md bg-orange-900/20 text-orange-400 font-medium flex items-center gap-1 border border-orange-500/20">
-                                    <Tag size={12} /> {proc.promo_slots} Vagas
-                                </span>
-                            )}
-                         </div>
-
-                        <p className="text-sm text-slate-500 leading-relaxed font-sans mb-4 line-clamp-2 min-h-[40px]">
-                            {proc.description || "Sem descrição..."}
-                        </p>
-
-                        <div className="mt-auto border-t border-slate-800 pt-3 flex justify-between items-end">
-                            <div className="flex flex-col">
-                                {isActive ? (
-                                    <>
-                                        <span className="text-xs text-slate-500 line-through">R$ {parseFloat(proc.price).toFixed(2)}</span>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-bold text-orange-400">
-                                                R$ {parseFloat(proc.promo_price).toFixed(2)}
-                                            </span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <span className="text-2xl font-bold text-white">
-                                        R$ {parseFloat(proc.price).toFixed(2)}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Edit Button Only - Delete is in Edit Mode */}
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation(); // Prevent drag/swipe interference if needed
-                                    handleEdit(proc);
-                                }}
-                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm"
-                            >
-                                <Pencil size={18} />
-                            </button>
-                        </div>
-                    </div>
+                    <button
+                      aria-label="Excluir serviço"
+                      onClick={() => setDeleteModal({ isOpen: true, id: proc.id })}
+                      className="flex items-center justify-center p-1.5 rounded-lg hover:bg-red-50 hover:text-red-600 text-gray-400 dark:text-gray-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-                </div>
-            </div>
-            );
-        })}
-        
-        {/* Append Logic: If inserting at the VERY END (after last item) */}
-        {editingId === -1 && insertIndex === procedures.length && procedures.length > 0 && (
-             <div className="col-span-full relative rounded-2xl flex flex-col overflow-hidden border shadow-lg bg-slate-900 border-fuchsia-500/30 ring-1 ring-fuchsia-500/30 animate-in slide-in-from-top-4 fade-in duration-300">
-                {renderForm(true)}
-             </div>
-        )}
+                <div
+                  className="w-24 h-24 shrink-0 rounded-lg bg-gray-200 dark:bg-gray-800 bg-center bg-cover shadow-inner"
+                  style={{ backgroundImage: `url('${getServiceImage(proc.name || '')}')` }}
+                />
+              </div>
+            </article>
+          ))}
 
-        {/* Append Button (if not empty and not inserting at end) */}
-        {procedures.length > 0 && editingId === null && (
-            <div className="col-span-1 min-h-[60px] flex items-center justify-center py-4">
-                 <button 
-                     onClick={() => {
-                            resetForm();
-                            setEditingId(-1);
-                            setInsertIndex(procedures.length);
-                     }}
-                     className="w-1/2 h-8 rounded-lg bg-slate-900 border border-dashed border-slate-600 text-slate-500 flex items-center justify-center opacity-60 hover:opacity-100 transition-all hover:scale-105 hover:border-fuchsia-500 hover:text-fuchsia-500 hover:shadow shadow-sm shadow-fuchsia-500/10 gap-2"
-                 >
-                     <Plus size={14} />
-                     <span className="text-[10px] font-bold uppercase tracking-wider">Adicionar ao Final</span>
-                 </button>
+          {!loading && filteredProcedures.length === 0 && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+              Nenhum serviço encontrado.
             </div>
-        )}
+          )}
+        </div>
+      </main>
+
+      <div className="fixed bottom-0 left-0 w-full bg-gradient-to-t from-[#f8f6f7] via-[#f8f6f7] to-transparent dark:from-[#221018] dark:via-[#221018] dark:to-transparent pb-6 pt-12 px-5 pointer-events-none">
+        <div className="max-w-md mx-auto pointer-events-auto">
+          <button
+            onClick={() => {
+              resetForm();
+              setEditingId(-1);
+              setInsertIndex(0);
+              setShowFormModal(true);
+            }}
+            className="w-full flex cursor-pointer items-center justify-center rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all gap-3"
+          >
+            <Plus size={20} />
+            <span>Adicionar Novo Serviço</span>
+          </button>
+        </div>
       </div>
 
-      {/* Modal Confirmation */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 bg-black/40 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#f8f6f7] dark:bg-[#221018] rounded-2xl shadow-2xl border border-[#e7cfd9]/40 dark:border-white/10 overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#e7cfd9]/40 dark:border-white/10 flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#1b0d13] dark:text-white">
+                {editingId && editingId !== -1 ? 'Editar Serviço' : 'Novo Serviço'}
+              </h2>
+              <button
+                onClick={resetForm}
+                className="text-[#9a4c6c] hover:text-[#1b0d13] dark:text-[#d48fa8] dark:hover:text-white transition-colors"
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 max-h-[80vh] overflow-y-auto">
+              {renderForm(true)}
+            </div>
+          </div>
+        </div>
+      )}
+
       <ConfirmationModal 
         isOpen={deleteModal.isOpen}
         title="Excluir Serviço"

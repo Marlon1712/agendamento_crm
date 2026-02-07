@@ -105,14 +105,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 w-full relative z-0 pb-28 md:pb-0 overflow-x-hidden">
+        <main className="flex-1 w-full relative pb-28 md:pb-0 overflow-x-hidden">
           <div className="p-4 md:p-8 max-w-7xl mx-auto">
             {children}
           </div>
         </main>
 
         {/* Bottom Navigation (Mobile Only) */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-2xl z-50 flex justify-between items-center px-6 py-3 pb-6 rounded-t-3xl">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-2xl z-10 flex justify-between items-center px-6 py-3 pb-6 rounded-t-3xl">
           <Link href="/admin/dashboard" className={`flex flex-col items-center gap-1 transition-colors ${pathname === '/admin/dashboard' ? 'text-fuchsia-600 dark:text-fuchsia-500' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
             <LayoutDashboard size={24} strokeWidth={pathname === '/admin/dashboard' ? 2.5 : 2} />
             <span className="text-[10px] font-bold">Início</span>

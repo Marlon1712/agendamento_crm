@@ -53,8 +53,9 @@ export async function GET(request: Request) {
         'SELECT id, start_time, end_time, reason FROM blocked_slots WHERE blocked_date = ?',
         [dateStr]
     );
-    const manualBlocks = blocks.filter((b: any) => b.reason !== 'override');
+    const manualBlocks = blocks.filter((b: any) => b.reason !== 'override' && b.reason !== 'available');
     const overrides = blocks.filter((b: any) => b.reason === 'override');
+    const availableOverrides = blocks.filter((b: any) => b.reason === 'available');
 
     // Helpers
     const toMinutes = (timeStr: string) => {
@@ -150,6 +151,21 @@ export async function GET(request: Request) {
             }
         }
 
+        // 6. Available override (only flips lunch/blocked)
+        let availableOverrideId: number | null = null;
+        if (status === 'unavailable' && (unavailableReason === 'lunch' || unavailableReason === 'blocked')) {
+            const ov = availableOverrides.find((o: any) => {
+                const bStart = toMinutes(o.start_time);
+                const bEnd = o.end_time ? toMinutes(o.end_time) : bStart + 60;
+                return (slotStart < bEnd) && (slotEnd > bStart);
+            });
+            if (ov) {
+                status = 'available';
+                unavailableReason = '';
+                availableOverrideId = ov.id || null;
+            }
+        }
+
         // Add to list if it starts before closing
         if (slotStart < endMin) {
             allSlots.push({
@@ -158,6 +174,7 @@ export async function GET(request: Request) {
                 reason: unavailableReason,
                 blockedReason: blockReason,
                 blockedId: blockId,
+                availableOverrideId,
                 debug: `start:${slotStart} end:${slotEnd}`
             });
         }
