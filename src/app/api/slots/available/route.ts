@@ -25,8 +25,11 @@ export async function GET(request: Request) {
         [dayOfWeek]
     );
 
-    // If day is closed, we still might want to return the slots but marked as unavailable?
-    if (ruleRows.length === 0 || !ruleRows[0].is_active) {
+    // Fallback to default hours if no rules are found in production
+    const hasRule = ruleRows.length > 0 && !!ruleRows[0];
+    const isActive = hasRule ? !!ruleRows[0].is_active : true;
+
+    if (!isActive) {
         return NextResponse.json({ 
             slots: [], 
             reason: 'CLOSED_DAY',
@@ -34,10 +37,10 @@ export async function GET(request: Request) {
         });
     }
 
-    const openTime = ruleRows[0].start_time; // '09:00:00'
-    const closeTime = ruleRows[0].end_time;  // '18:00:00'
-    const lunchStart = ruleRows[0].lunch_start;
-    const lunchEnd = ruleRows[0].lunch_end;
+    const openTime = hasRule ? ruleRows[0].start_time : '07:00:00';
+    const closeTime = hasRule ? ruleRows[0].end_time : '18:00:00';
+    const lunchStart = hasRule ? ruleRows[0].lunch_start : '12:00:00';
+    const lunchEnd = hasRule ? ruleRows[0].lunch_end : '12:30:00';
 
     // 3. Get Busy Slots
     let leadsQuery = `SELECT appointment_time, end_time FROM leads WHERE appointment_date = ? AND status != 'cancelado'`;
