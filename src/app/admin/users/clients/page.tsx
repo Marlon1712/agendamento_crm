@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function AdminUsers() {
+export default function AdminClientsPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -63,34 +65,14 @@ export default function AdminUsers() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="max-w-md mx-auto min-h-screen flex flex-col">
-        <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-900 px-6 py-4 pt-6 flex items-center justify-center">
-          <h1 className="text-xl font-bold text-white">Perfil</h1>
+        <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-900 px-6 py-4 pt-6 flex items-center justify-between">
+          <button onClick={() => router.back()} className="text-slate-300">←</button>
+          <h1 className="text-lg font-bold text-white">Gestão de Clientes</h1>
+          <div className="w-6" />
         </header>
 
-        <div className="px-4 pt-4 grid grid-cols-2 gap-3">
-          <Link href="/admin/schedule" className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
-            <div className="size-10 rounded-xl bg-fuchsia-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-fuchsia-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M7 3v2M17 3v2M3 9h18M5 6h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <p className="text-sm font-semibold">Horário de Funcionamento</p>
-            <p className="text-xs text-slate-400">Configurar agenda</p>
-          </Link>
-          <Link href="/admin/users/clients" className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
-            <div className="size-10 rounded-xl bg-fuchsia-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-fuchsia-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Zm-11 9a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                <path d="M19.5 8.5a2.5 2.5 0 1 0-1.7 2.37M22 20a4.5 4.5 0 0 0-6-4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <p className="text-sm font-semibold">Gestão de Clientes</p>
-            <p className="text-xs text-slate-400">Base de dados</p>
-          </Link>
-        </div>
-
-        <div id="gestao-clientes" className="px-4 mt-6 flex items-center justify-between scroll-mt-24">
-          <h2 className="text-sm font-bold">Gestão de Clientes</h2>
+        <div className="px-4 mt-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold">Clientes</h2>
           <span className="text-xs text-slate-400">{clients.length} total</span>
         </div>
 

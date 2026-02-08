@@ -12,6 +12,7 @@ function AnamneseContent() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
+  const strokesRef = useRef<{ points: { x: number; y: number }[] }[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,7 +20,12 @@ function AnamneseContent() {
   const [allergies, setAllergies] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [signature, setSignature] = useState<string>('');
+  const [pendingSignature, setPendingSignature] = useState<string>('');
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [isSignatureOpen, setIsSignatureOpen] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [signatureError, setSignatureError] = useState('');
+  const [allowWithoutSignature, setAllowWithoutSignature] = useState(false);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -36,6 +42,7 @@ function AnamneseContent() {
             setAllergies(parsed.allergies || []);
             setNotes(parsed.notes || '');
             setSignature(parsed.signature || '');
+            setPendingSignature(parsed.signature || '');
           } catch {
             setNotes(data.notes || '');
           }
@@ -49,6 +56,29 @@ function AnamneseContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, name, contact]);
 
+  const drawStrokes = () => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#e5e7eb';
+
+    strokesRef.current.forEach((stroke) => {
+      if (stroke.points.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        const p = stroke.points[i];
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    });
+  };
+
   useEffect(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -60,14 +90,17 @@ function AnamneseContent() {
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#e5e7eb';
 
-    if (signature) {
+    if (pendingSignature) {
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       };
-      img.src = signature;
+      img.src = pendingSignature;
+    } else {
+      strokesRef.current = [];
+      drawStrokes();
     }
-  }, [signature]);
+  }, [pendingSignature]);
 
   const startDraw = (x: number, y: number) => {
     if (!canvasRef.current) return;
@@ -76,6 +109,8 @@ function AnamneseContent() {
     ctx.beginPath();
     ctx.moveTo(x, y);
     drawing.current = true;
+    setIsDrawing(true);
+    strokesRef.current.push({ points: [{ x, y }] });
   };
 
   const draw = (x: number, y: number) => {
@@ -84,30 +119,60 @@ function AnamneseContent() {
     if (!ctx) return;
     ctx.lineTo(x, y);
     ctx.stroke();
+    const stroke = strokesRef.current[strokesRef.current.length - 1];
+    if (stroke) stroke.points.push({ x, y });
   };
 
   const endDraw = () => {
     if (!canvasRef.current) return;
     drawing.current = false;
+    setIsDrawing(false);
     const data = canvasRef.current.toDataURL('image/png');
-    setSignature(data);
+    setPendingSignature(data);
   };
 
   const handlePointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.cancelable) e.preventDefault();
+    if (e.type === 'pointerdown') {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     if (e.type === 'pointerdown') startDraw(x, y);
     if (e.type === 'pointermove') draw(x, y);
-    if (e.type === 'pointerup' || e.type === 'pointerleave') endDraw();
+    if (e.type === 'pointerup' || e.type === 'pointerleave') {
+      endDraw();
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
   };
 
   const clearSignature = () => {
-    setSignature('');
+    setPendingSignature('');
+    strokesRef.current = [];
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     }
+  };
+
+  const undoSignature = () => {
+    if (!strokesRef.current.length) return;
+    strokesRef.current.pop();
+    drawStrokes();
+    if (canvasRef.current) {
+      const data = canvasRef.current.toDataURL('image/png');
+      setPendingSignature(data);
+    }
+  };
+
+  const openSignature = () => {
+    setIsSignatureOpen(true);
+  };
+
+  const closeSignature = () => {
+    setIsSignatureOpen(false);
+    setIsDrawing(false);
   };
 
   const toggleAllergy = (label: string) => {
@@ -117,6 +182,10 @@ function AnamneseContent() {
   };
 
   const handleSave = async () => {
+    if (!signature && !allowWithoutSignature) {
+      setSignatureError('Assinatura obrigatória para salvar.');
+      return;
+    }
     setSaving(true);
     const payload = JSON.stringify({ health, allergies, notes, signature });
     await fetch('/api/clients/notes', {
@@ -213,18 +282,37 @@ function AnamneseContent() {
               <span className="material-symbols-outlined text-base">draw</span>
               Assinatura Digital
             </div>
-            <canvas
-              ref={canvasRef}
-              width={320}
-              height={140}
-              onPointerDown={handlePointer}
-              onPointerMove={handlePointer}
-              onPointerUp={handlePointer}
-              onPointerLeave={handlePointer}
-              className="mt-3 w-full rounded-xl border border-slate-800 bg-slate-950"
-            />
+            <button
+              type="button"
+              onClick={openSignature}
+              className="mt-3 w-full rounded-xl border border-slate-800 bg-slate-950 h-36 flex items-center justify-center text-sm text-slate-500 hover:text-slate-300 overflow-hidden"
+            >
+              {signature ? (
+                <img src={signature} alt="Assinatura" className="h-full w-full object-contain" />
+              ) : (
+                'Toque para assinar'
+              )}
+            </button>
             <div className="mt-2 flex justify-end">
               <button onClick={clearSignature} className="text-xs text-slate-400">Limpar</button>
+            </div>
+            {signatureError && (
+              <p className="mt-2 text-xs text-rose-300">{signatureError}</p>
+            )}
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2">
+              <div className="text-xs text-slate-400">
+                Salvar sem assinatura (admin)
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAllowWithoutSignature((prev) => !prev);
+                  if (signatureError) setSignatureError('');
+                }}
+                className={`w-11 h-6 rounded-full border relative ${allowWithoutSignature ? 'bg-fuchsia-600 border-fuchsia-600' : 'bg-slate-800 border-slate-700'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${allowWithoutSignature ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
           </section>
 
@@ -237,6 +325,55 @@ function AnamneseContent() {
           </button>
         </main>
       </div>
+
+      {isSignatureOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
+            <button onClick={closeSignature} className="text-slate-300">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <h3 className="text-sm font-semibold text-white">Assinatura</h3>
+            <div className="flex items-center gap-3">
+              <button onClick={undoSignature} className="text-xs text-slate-300 font-semibold">
+                Desfazer
+              </button>
+              <button onClick={clearSignature} className="text-xs text-fuchsia-400 font-semibold">
+                Limpar
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 px-4 py-4 flex flex-col">
+            <canvas
+              ref={canvasRef}
+              width={390}
+              height={480}
+              onPointerDown={handlePointer}
+              onPointerMove={handlePointer}
+              onPointerUp={handlePointer}
+              onPointerLeave={handlePointer}
+              className="w-full flex-1 rounded-2xl border border-slate-800 bg-slate-950 touch-none"
+            />
+            <p className="mt-3 text-xs text-slate-500 text-center">
+              Toque e arraste para assinar
+            </p>
+          </div>
+          <div className="px-4 pb-6">
+            <button
+              onClick={() => {
+                if (pendingSignature) {
+                  setSignature(pendingSignature);
+                  setSignatureError('');
+                }
+                closeSignature();
+              }}
+              disabled={!pendingSignature}
+              className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3.5 rounded-full shadow-lg shadow-fuchsia-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Usar assinatura
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

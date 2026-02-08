@@ -32,6 +32,7 @@ export default function FinancePage() {
       amount: '',
       date: getLocalDate(),
       category: 'Outros',
+      type: 'expense',
       is_recurring: false,
       recurrence_day: ''
   });
@@ -59,10 +60,15 @@ export default function FinancePage() {
             .reduce((acc: number, t: any) => acc + Number(t.price), 0);
         
         // Expenses Total
-        const totalExpenses = exps.reduce((acc: number, e: any) => acc + Number(e.amount), 0);
+        const totalExpenses = exps
+          .filter((e: any) => (e.type || 'expense') === 'expense')
+          .reduce((acc: number, e: any) => acc + Number(e.amount), 0);
+        const manualIncome = exps
+          .filter((e: any) => (e.type || 'expense') === 'income')
+          .reduce((acc: number, e: any) => acc + Number(e.amount), 0);
 
         // Net Profit
-        const netProfit = realized - totalExpenses;
+        const netProfit = (realized + manualIncome) - totalExpenses;
 
         // Projected (Realized + Scheduled)
         // Agendado = Money to come. Realizado = Money already in.
@@ -72,8 +78,8 @@ export default function FinancePage() {
             .reduce((acc: number, t: any) => acc + Number(t.price), 0);
 
         setSummary({
-            realized,
-            projected,
+            realized: realized + manualIncome,
+            projected: projected + manualIncome,
             expenses: totalExpenses,
             netProfit
         });
@@ -104,6 +110,7 @@ export default function FinancePage() {
             amount: '',
             date: getLocalDate(),
             category: 'Outros',
+            type: 'expense',
             is_recurring: false,
             recurrence_day: ''
           });
@@ -114,8 +121,8 @@ export default function FinancePage() {
       }
   };
 
-  const handleDeleteExpense = async (id: number) => {
-      if (!confirm('Deseja excluir esta despesa?')) return;
+  const handleDeleteRecord = async (id: number, type: 'expense' | 'income') => {
+      if (!confirm(type === 'income' ? 'Deseja excluir esta receita?' : 'Deseja excluir esta despesa?')) return;
       try {
           await fetch(`/api/finance/expenses/${id}`, { method: 'DELETE' });
           fetchData();
@@ -188,6 +195,11 @@ export default function FinancePage() {
         if (key === todayStr) map.get(key)!.total += Number(t.price || 0);
       });
       expenses.forEach((e: any) => {
+        if ((e.type || 'expense') === 'income') {
+          const key = String(e.date).split('T')[0];
+          if (key === todayStr) map.get(key)!.total += Number(e.amount || 0);
+          return;
+        }
         const key = String(e.date).split('T')[0];
         if (key === todayStr) map.get(key)!.total -= Number(e.amount || 0);
       });
@@ -204,6 +216,12 @@ export default function FinancePage() {
         if (item) item.total += Number(t.price || 0);
       });
       expenses.forEach((e: any) => {
+        if ((e.type || 'expense') === 'income') {
+          const key = String(e.date).split('T')[0];
+          const item = map.get(key);
+          if (item) item.total += Number(e.amount || 0);
+          return;
+        }
         const key = String(e.date).split('T')[0];
         const item = map.get(key);
         if (item) item.total -= Number(e.amount || 0);
@@ -232,6 +250,13 @@ export default function FinancePage() {
       if (base[idx]) base[idx].total += Number(t.price || 0);
     });
     expenses.forEach((e: any) => {
+      if ((e.type || 'expense') === 'income') {
+        const key = String(e.date).split('T')[0];
+        if (!key.startsWith(currentMonth)) return;
+        const idx = bucketForDate(key);
+        if (base[idx]) base[idx].total += Number(e.amount || 0);
+        return;
+      }
       const key = String(e.date).split('T')[0];
       if (!key.startsWith(currentMonth)) return;
       const idx = bucketForDate(key);
@@ -335,40 +360,56 @@ export default function FinancePage() {
               .filter((t) => t.status === 'realizado' && isInPeriod(String(t.appointment_date).split('T')[0]))
               .map((t) => ({
               id: `r-${t.id}`,
+              recordId: t.id,
+              recordType: 'income',
               type: 'entrada',
               title: t.procedure_name,
               subtitle: t.client_name,
               amount: Number(t.price),
               date: t.appointment_date,
-              badge: t.status === 'realizado' ? 'PIX' : 'CREDITO'
+              badge: t.status === 'realizado' ? 'PIX' : 'CREDITO',
+              manual: false
             })),
             ...expenses
               .filter((e) => isInPeriod(String(e.date).split('T')[0]))
               .map((e) => ({
               id: `e-${e.id}`,
-              type: 'saida',
+              recordId: e.id,
+              recordType: (e.type || 'expense') as 'expense' | 'income',
+              type: (e.type || 'expense') === 'income' ? 'entrada' : 'saida',
               title: e.description,
               subtitle: e.category,
               amount: Number(e.amount),
               date: e.date,
-              badge: 'BOLETO'
+              badge: (e.type || 'expense') === 'income' ? 'CAIXA' : 'BOLETO',
+              manual: true
             }))
           ]
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 6)
             .map((item) => (
-              <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
+              <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold">{item.title}</p>
                   <p className="text-xs text-slate-400">{item.subtitle}</p>
                 </div>
                 <div className="text-right">
-                  <p className={`text-sm font-bold ${item.type === 'entrada' ? 'text-green-600' : 'text-red-500'}`}>
+                  <p className={`text-sm font-bold ${item.type === 'entrada' ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {item.type === 'entrada' ? '+' : '-'} {formatCurrency(item.amount)}
                   </p>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#ee2b7c]/10 text-[#ee2b7c] font-semibold">
-                    {item.badge}
-                  </span>
+                  <div className="mt-1 flex items-center gap-2 justify-end">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#ee2b7c]/10 text-[#ee2b7c] font-semibold">
+                      {item.badge}
+                    </span>
+                    {item.manual && item.recordId && item.recordType && (
+                      <button
+                        onClick={() => handleDeleteRecord(item.recordId, item.recordType as 'expense' | 'income')}
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-slate-700 text-slate-300 hover:text-rose-300 hover:border-rose-400/50"
+                      >
+                        Excluir
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -378,12 +419,12 @@ export default function FinancePage() {
             className="w-full mt-1 flex items-center justify-center gap-3 rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all"
           >
             <span className="material-symbols-outlined text-[24px]">add</span>
-            <span>Adicionar Despesa</span>
+            <span>Adicionar Lançamento</span>
           </button>
         </div>
       </div>
 
-      {/* New Expense Modal */}
+      {/* New Record Modal */}
       {isExpenseModalOpen && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center backdrop-blur-sm">
               <div className="w-full max-w-md bg-slate-950 rounded-t-3xl shadow-2xl border border-slate-800 overflow-hidden">
@@ -391,7 +432,7 @@ export default function FinancePage() {
                       <button onClick={() => setIsExpenseModalOpen(false)} className="text-white">
                           <span className="material-symbols-outlined">close</span>
                       </button>
-                      <h3 className="text-base font-bold text-white">Nova Despesa</h3>
+                      <h3 className="text-base font-bold text-white">Novo Lançamento</h3>
                       <button
                           onClick={() => {
                               setAmountInput('');
@@ -400,6 +441,7 @@ export default function FinancePage() {
                                 amount: '',
                                 date: getLocalDate(),
                                 category: 'Outros',
+                                type: 'expense',
                                 is_recurring: false,
                                 recurrence_day: ''
                               });
@@ -411,10 +453,31 @@ export default function FinancePage() {
                   </div>
 
                   <div className="px-6 pt-2 pb-4">
-                      <p className="text-xs text-slate-400 text-center">Valor da despesa</p>
+                      <p className="text-xs text-slate-400 text-center">
+                        {newExpense.type === 'income' ? 'Valor da receita' : 'Valor da despesa'}
+                      </p>
                       <p className="text-3xl font-bold text-center text-white">
                           {formatAmountDisplay(amountInput)}
                       </p>
+                  </div>
+
+                  <div className="px-6 pb-4">
+                      <div className="grid grid-cols-2 gap-2 bg-slate-900 border border-slate-800 rounded-full p-1">
+                        {[
+                          { key: 'expense', label: 'Despesa' },
+                          { key: 'income', label: 'Receita' }
+                        ].map((opt) => (
+                          <button
+                            key={opt.key}
+                            onClick={() => setNewExpense({ ...newExpense, type: opt.key })}
+                            className={`text-xs font-semibold py-2 rounded-full ${
+                              newExpense.type === opt.key ? 'bg-[#ee2b7c] text-white' : 'text-slate-400'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                   </div>
 
                   <div className="px-6 pb-4">
@@ -482,7 +545,7 @@ export default function FinancePage() {
                           onClick={handleCreateExpense}
                           className="w-full bg-[#8b2be2] hover:bg-[#7a22c9] text-white font-bold py-3.5 rounded-xl shadow-lg"
                       >
-                          Salvar Despesa ✓
+                          Salvar Lançamento ✓
                       </button>
                   </div>
               </div>

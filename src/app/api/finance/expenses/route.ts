@@ -44,13 +44,13 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { description, amount, date, category, is_recurring, recurrence_day } = body;
+        const { description, amount, date, category, is_recurring, recurrence_day, type } = body;
         const user = (session as any).user;
 
         const [res] = await pool.query(`
-            INSERT INTO expenses (description, amount, date, category, is_recurring, recurrence_day, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [description, amount, date, category, is_recurring ? 1 : 0, recurrence_day || null, user.id]);
+            INSERT INTO expenses (description, amount, date, category, is_recurring, recurrence_day, user_id, type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [description, amount, date, category, is_recurring ? 1 : 0, recurrence_day || null, user.id, type || 'expense']);
 
         return NextResponse.json({ success: true, id: (res as any).insertId });
     } catch (error) {
