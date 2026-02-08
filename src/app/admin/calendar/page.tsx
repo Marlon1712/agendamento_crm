@@ -632,15 +632,25 @@ export default function CalendarDashboard() {
                                 const leadSpanByStart = new Map<string, number>();
                                 const occupiedTimes = new Set<string>();
 
+                                const slotStepMinutes = (() => {
+                                    if (slotTimes.length >= 2) {
+                                        const [h1, m1] = slotTimes[0].split(':').map(Number);
+                                        const [h2, m2] = slotTimes[1].split(':').map(Number);
+                                        const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                                        return diff > 0 ? diff : 30;
+                                    }
+                                    return 30;
+                                })();
+
                                 dayLeads.forEach((lead: any) => {
                                     if (lead.status === 'cancelado') return;
                                     const start = lead.appointment_time.slice(0, 5);
                                     const duration = Number(lead.procedure_duration || lead.duration || 30);
-                                    const span = Math.max(1, Math.ceil(duration / 30));
+                                    const span = Math.max(1, Math.ceil(duration / slotStepMinutes));
                                     leadsByStart.set(start, lead);
                                     leadSpanByStart.set(start, span);
                                     for (let i = 0; i < span; i++) {
-                                        occupiedTimes.add(addMinutes(start, i * 30));
+                                        occupiedTimes.add(addMinutes(start, i * slotStepMinutes));
                                     }
                                 });
 
@@ -650,7 +660,7 @@ export default function CalendarDashboard() {
                                     const span = leadSpanByStart.get(time) || 1;
                                     if (span <= 1) return;
                                     for (let i = 1; i < span; i++) {
-                                        continuationTimes.add(addMinutes(time, i * 30));
+                                        continuationTimes.add(addMinutes(time, i * slotStepMinutes));
                                     }
                                 });
 

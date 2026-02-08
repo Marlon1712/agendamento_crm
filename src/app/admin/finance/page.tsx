@@ -14,6 +14,7 @@ export default function FinancePage() {
 
   // UI State
   const [activeTab, setActiveTab] = useState<'receitas' | 'despesas'>('receitas');
+  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('month');
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
   // Helper for Local Date YYYY-MM-DD
@@ -153,9 +154,9 @@ export default function FinancePage() {
     setNewExpense((prev) => ({ ...prev, amount: value }));
   }, [amountInput]);
 
-  const getLast7Days = () => {
+  const getLastNDays = (n: number) => {
     const days: { key: string; label: string; total: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = n - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().split('T')[0];
@@ -165,19 +166,76 @@ export default function FinancePage() {
     return days;
   };
 
+  const todayStr = getLocalDate();
+  const isInPeriod = (dateStr: string) => {
+    if (period === 'day') return dateStr === todayStr;
+    if (period === 'week') {
+      const now = new Date();
+      const d = new Date(`${dateStr}T12:00:00`);
+      const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
+      return diff >= 0 && diff <= 6;
+    }
+    return dateStr.startsWith(currentMonth);
+  };
+
   const dailySeries = (() => {
-    const base = getLast7Days();
-    const map = new Map(base.map((d) => [d.key, d]));
+    if (period === 'day') {
+      const base = [{ key: todayStr, label: 'hoje', total: 0 }];
+      const map = new Map(base.map((d) => [d.key, d]));
+      history.forEach((t: any) => {
+        if (t.status !== 'realizado') return;
+        const key = String(t.appointment_date).split('T')[0];
+        if (key === todayStr) map.get(key)!.total += Number(t.price || 0);
+      });
+      expenses.forEach((e: any) => {
+        const key = String(e.date).split('T')[0];
+        if (key === todayStr) map.get(key)!.total -= Number(e.amount || 0);
+      });
+      return base;
+    }
+
+    if (period === 'week') {
+      const base = getLastNDays(7);
+      const map = new Map(base.map((d) => [d.key, d]));
+      history.forEach((t: any) => {
+        if (t.status !== 'realizado') return;
+        const key = String(t.appointment_date).split('T')[0];
+        const item = map.get(key);
+        if (item) item.total += Number(t.price || 0);
+      });
+      expenses.forEach((e: any) => {
+        const key = String(e.date).split('T')[0];
+        const item = map.get(key);
+        if (item) item.total -= Number(e.amount || 0);
+      });
+      return base;
+    }
+
+    const [y, m] = currentMonth.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const weeks = Math.ceil(daysInMonth / 7);
+    const base = Array.from({ length: weeks }).map((_, i) => ({
+      key: `${currentMonth}-w${i + 1}`,
+      label: `sem ${i + 1}`,
+      total: 0
+    }));
+    const bucketForDate = (dateStr: string) => {
+      const d = new Date(`${dateStr}T12:00:00`);
+      const day = d.getDate();
+      return Math.floor((day - 1) / 7);
+    };
     history.forEach((t: any) => {
       if (t.status !== 'realizado') return;
       const key = String(t.appointment_date).split('T')[0];
-      const item = map.get(key);
-      if (item) item.total += Number(t.price || 0);
+      if (!key.startsWith(currentMonth)) return;
+      const idx = bucketForDate(key);
+      if (base[idx]) base[idx].total += Number(t.price || 0);
     });
     expenses.forEach((e: any) => {
       const key = String(e.date).split('T')[0];
-      const item = map.get(key);
-      if (item) item.total -= Number(e.amount || 0);
+      if (!key.startsWith(currentMonth)) return;
+      const idx = bucketForDate(key);
+      if (base[idx]) base[idx].total -= Number(e.amount || 0);
     });
     return base;
   })();
@@ -186,70 +244,74 @@ export default function FinancePage() {
   if (loading && !summary) return <div className="flex h-screen items-center justify-center text-slate-500">Carregando financeiro...</div>;
 
   return (
-    <div className="min-h-screen bg-[#f8f6f7] dark:bg-[#221018] text-[#1b0d13] dark:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="max-w-md mx-auto min-h-screen flex flex-col">
-        <header className="sticky top-0 z-30 bg-[#f8f6f7]/95 dark:bg-[#221018]/95 backdrop-blur-md border-b border-[#e7cfd9]/40 dark:border-white/5 px-4 py-3 flex items-center justify-between">
-          <button onClick={() => router.push('/admin/dashboard')} className="text-[#1b0d13] dark:text-white">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <h1 className="text-base font-bold">Financeiro</h1>
+        <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-900 px-6 py-4 pt-6 flex items-center justify-center">
+          <h1 className="text-xl font-bold text-white">Financeiro</h1>
+        </header>
+
+        <div className="px-4 pt-4 flex items-center gap-3">
+          <div className="grid grid-cols-3 gap-2 bg-slate-900 border border-slate-800 rounded-full p-1 flex-1">
+            {[
+              { key: 'day', label: 'Dia' },
+              { key: 'week', label: 'Semana' },
+              { key: 'month', label: 'Mês' }
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setPeriod(t.key as 'day' | 'week' | 'month')}
+                className={`text-xs font-semibold py-2 rounded-full ${
+                  period === t.key ? 'bg-[#ee2b7c] text-white' : 'text-slate-400'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
           <input
             type="month"
             value={currentMonth}
             onChange={(e) => setCurrentMonth(e.target.value)}
             className="text-xs font-semibold text-[#ee2b7c] bg-transparent border-none outline-none"
           />
-        </header>
-
-        <div className="px-4 pt-4">
-          <div className="grid grid-cols-3 gap-2 bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b] rounded-full p-1">
-            {['Dia', 'Semana', 'Mês'].map((t) => (
-              <button
-                key={t}
-                className={`text-xs font-semibold py-2 rounded-full ${t === 'Mês' ? 'bg-[#ee2b7c] text-white' : 'text-[#9a4c6c] dark:text-[#d48fa8]'}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="px-4 mt-4 grid grid-cols-2 gap-3">
-          <div className="bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Saldo Total</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <p className="text-xs text-slate-400">Saldo Total</p>
             <p className="text-lg font-bold mt-2">{formatCurrency(summary?.netProfit || 0)}</p>
-            <p className="text-[10px] text-green-600 mt-1">vs. mês anterior</p>
+            <p className="text-[10px] text-emerald-400 mt-1">vs. mês anterior</p>
           </div>
-          <div className="bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b] rounded-2xl p-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Lucro</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <p className="text-xs text-slate-400">Lucro</p>
             <p className="text-lg font-bold mt-2">{formatCurrency(summary?.realized || 0)}</p>
-            <p className="text-[10px] text-green-600 mt-1">+5%</p>
+            <p className="text-[10px] text-emerald-400 mt-1">+5%</p>
           </div>
-          <div className="col-span-2 bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b] rounded-2xl p-4">
+          <div className="col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Projetado</p>
+              <p className="text-xs text-slate-400">Projetado</p>
               <span className="text-[10px] text-[#ee2b7c] font-semibold">Recebido + Agendado</span>
             </div>
             <p className="text-xl font-bold mt-2">{formatCurrency(summary?.projected || 0)}</p>
           </div>
-          <div className="col-span-2 bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b] rounded-2xl p-4">
+          <div className="col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Entradas vs Saídas</p>
-              <span className="text-[10px] text-green-600 font-semibold">+8%</span>
+              <p className="text-xs text-slate-400">Entradas vs Saídas</p>
+              <span className="text-[10px] text-emerald-400 font-semibold">+8%</span>
             </div>
             <p className="text-xl font-bold mt-2">{formatCurrency((summary?.realized || 0) + (summary?.expenses || 0))}</p>
-            <div className="mt-3 h-20 rounded-lg border border-[#e7cfd9]/60 dark:border-[#5e3a4b] bg-[#fdf8fb] dark:bg-[#28141f] flex items-end justify-between px-2 pb-2 gap-2">
+            <div className="mt-3 h-20 rounded-lg border border-slate-800 bg-slate-950 flex items-end px-2 pb-2 gap-2 overflow-hidden">
               {dailySeries.map((d) => {
                 const height = Math.max(8, Math.round((Math.abs(d.total) / maxAbs) * 56));
                 const isPositive = d.total >= 0;
                 return (
-                  <div key={d.key} className="flex flex-col items-center gap-1 flex-1">
+                  <div key={d.key} className="flex flex-col items-center gap-1 flex-1 min-w-0">
                     <div
                       className={`w-full rounded-md ${isPositive ? 'bg-emerald-400/80' : 'bg-rose-400/80'}`}
                       style={{ height }}
                       title={`${d.label}: ${formatCurrency(d.total)}`}
                     />
-                    <span className="text-[10px] text-gray-400">{d.label}</span>
+                    <span className="text-[10px] text-slate-400 truncate">{d.label}</span>
                   </div>
                 );
               })}
@@ -258,7 +320,7 @@ export default function FinancePage() {
         </div>
 
         <div className="px-4 mt-6 flex items-center justify-between">
-          <h2 className="text-sm font-bold">Transações Recentes</h2>
+          <h2 className="text-sm font-bold text-white">Transações Recentes</h2>
           <button
             onClick={() => setActiveTab(activeTab === 'receitas' ? 'despesas' : 'receitas')}
             className="text-xs font-semibold text-[#ee2b7c]"
@@ -269,7 +331,9 @@ export default function FinancePage() {
 
         <div className="px-4 pb-28 mt-3 flex flex-col gap-3">
           {[
-            ...history.map((t) => ({
+            ...history
+              .filter((t) => t.status === 'realizado' && isInPeriod(String(t.appointment_date).split('T')[0]))
+              .map((t) => ({
               id: `r-${t.id}`,
               type: 'entrada',
               title: t.procedure_name,
@@ -278,7 +342,9 @@ export default function FinancePage() {
               date: t.appointment_date,
               badge: t.status === 'realizado' ? 'PIX' : 'CREDITO'
             })),
-            ...expenses.map((e) => ({
+            ...expenses
+              .filter((e) => isInPeriod(String(e.date).split('T')[0]))
+              .map((e) => ({
               id: `e-${e.id}`,
               type: 'saida',
               title: e.description,
@@ -291,10 +357,10 @@ export default function FinancePage() {
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 6)
             .map((item) => (
-              <div key={item.id} className="bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b] rounded-2xl p-3 flex items-center justify-between">
+              <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold">{item.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.subtitle}</p>
+                  <p className="text-xs text-slate-400">{item.subtitle}</p>
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-bold ${item.type === 'entrada' ? 'text-green-600' : 'text-red-500'}`}>
@@ -306,25 +372,26 @@ export default function FinancePage() {
                 </div>
               </div>
             ))}
-        </div>
 
-        <button
-          onClick={() => setIsExpenseModalOpen(true)}
-          className="fixed right-5 bottom-20 size-12 rounded-full bg-[#ee2b7c] text-white shadow-lg flex items-center justify-center"
-        >
-          +
-        </button>
+          <button
+            onClick={() => setIsExpenseModalOpen(true)}
+            className="w-full mt-1 flex items-center justify-center gap-3 rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all"
+          >
+            <span className="material-symbols-outlined text-[24px]">add</span>
+            <span>Adicionar Despesa</span>
+          </button>
+        </div>
       </div>
 
       {/* New Expense Modal */}
       {isExpenseModalOpen && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center backdrop-blur-sm">
-              <div className="w-full max-w-md bg-[#f8f6f7] dark:bg-[#221018] rounded-t-3xl shadow-2xl border border-[#e7cfd9]/40 dark:border-white/5 overflow-hidden">
+              <div className="w-full max-w-md bg-slate-950 rounded-t-3xl shadow-2xl border border-slate-800 overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3">
-                      <button onClick={() => setIsExpenseModalOpen(false)} className="text-[#1b0d13] dark:text-white">
+                      <button onClick={() => setIsExpenseModalOpen(false)} className="text-white">
                           <span className="material-symbols-outlined">close</span>
                       </button>
-                      <h3 className="text-base font-bold text-[#1b0d13] dark:text-white">Nova Despesa</h3>
+                      <h3 className="text-base font-bold text-white">Nova Despesa</h3>
                       <button
                           onClick={() => {
                               setAmountInput('');
@@ -344,14 +411,14 @@ export default function FinancePage() {
                   </div>
 
                   <div className="px-6 pt-2 pb-4">
-                      <p className="text-xs text-gray-500 text-center">Valor da despesa</p>
-                      <p className="text-3xl font-bold text-center text-[#1b0d13] dark:text-white">
+                      <p className="text-xs text-slate-400 text-center">Valor da despesa</p>
+                      <p className="text-3xl font-bold text-center text-white">
                           {formatAmountDisplay(amountInput)}
                       </p>
                   </div>
 
                   <div className="px-6 pb-4">
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Categoria</p>
+                      <p className="text-xs font-semibold text-slate-400 mb-2">Categoria</p>
                       <div className="flex flex-wrap gap-2">
                           {['Produtos', 'Aluguel', 'Materiais', 'Contas', 'Pessoal', 'Outros'].map((cat) => (
                               <button
@@ -360,7 +427,7 @@ export default function FinancePage() {
                                   className={`px-3 py-2 rounded-full text-xs font-semibold border ${
                                       newExpense.category === cat
                                           ? 'bg-[#ee2b7c] border-[#ee2b7c] text-white'
-                                          : 'bg-white dark:bg-[#2d1b24] border-[#e7cfd9] dark:border-[#5e3a4b] text-[#1b0d13] dark:text-white'
+                                          : 'bg-slate-900 border-slate-800 text-white'
                                   }`}
                               >
                                   {cat}
@@ -371,19 +438,19 @@ export default function FinancePage() {
 
                   <div className="px-6 pb-4 grid grid-cols-2 gap-3">
                       <div>
-                          <label className="text-xs font-semibold text-gray-500 mb-2 block">Data</label>
+                          <label className="text-xs font-semibold text-slate-400 mb-2 block">Data</label>
                           <input
                               type="date"
-                              className="w-full rounded-xl border border-[#e7cfd9] dark:border-[#5e3a4b] bg-white dark:bg-[#2d1b24] px-3 py-2 text-sm"
+                              className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
                               value={newExpense.date}
                               onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
                           />
                       </div>
                       <div>
-                          <label className="text-xs font-semibold text-gray-500 mb-2 block">Nota</label>
+                          <label className="text-xs font-semibold text-slate-400 mb-2 block">Nota</label>
                           <input
                               type="text"
-                              className="w-full rounded-xl border border-[#e7cfd9] dark:border-[#5e3a4b] bg-white dark:bg-[#2d1b24] px-3 py-2 text-sm"
+                              className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
                               placeholder="Opcional"
                               value={newExpense.description}
                               onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
@@ -392,19 +459,19 @@ export default function FinancePage() {
                   </div>
 
                   <div className="px-6 pb-4">
-                      <div className="grid grid-cols-3 gap-3 text-center text-lg font-semibold text-[#1b0d13] dark:text-white">
+                      <div className="grid grid-cols-3 gap-3 text-center text-lg font-semibold text-white">
                           {[1,2,3,4,5,6,7,8,9].map((n) => (
-                              <button key={n} onClick={() => handleAmountKey(String(n))} className="py-3 rounded-xl bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b]">
+                              <button key={n} onClick={() => handleAmountKey(String(n))} className="py-3 rounded-xl bg-slate-900 border border-slate-800">
                                   {n}
                               </button>
                           ))}
-                          <button onClick={() => handleAmountKey('clear')} className="py-3 rounded-xl bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b]">
+                          <button onClick={() => handleAmountKey('clear')} className="py-3 rounded-xl bg-slate-900 border border-slate-800">
                               ,
                           </button>
-                          <button onClick={() => handleAmountKey('0')} className="py-3 rounded-xl bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b]">
+                          <button onClick={() => handleAmountKey('0')} className="py-3 rounded-xl bg-slate-900 border border-slate-800">
                               0
                           </button>
-                          <button onClick={() => handleAmountKey('del')} className="py-3 rounded-xl bg-white dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#5e3a4b]">
+                          <button onClick={() => handleAmountKey('del')} className="py-3 rounded-xl bg-slate-900 border border-slate-800">
                               ⌫
                           </button>
                       </div>
