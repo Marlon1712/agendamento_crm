@@ -48,7 +48,10 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   useEffect(() => {
     if (isOpen) {
         // Fetch Data
-        fetch('/api/clients').then(res => res.json()).then(setClients);
+        fetch('/api/clients')
+            .then(res => res.json())
+            .then(data => setClients(Array.isArray(data) ? data : data.clients || []))
+            .catch(() => setClients([]));
         fetch('/api/procedures')
             .then(res => res.json())
             .then(data => setProcedures(Array.isArray(data) ? data : data.procedures || []))
@@ -106,7 +109,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
       const val = e.target.value;
       setClientName(val);
       // Auto-fill contact if match
-      const match = clients.find(c => c.name === val);
+      const match = (Array.isArray(clients) ? clients : []).find(c => c.name === val);
       if (match) {
           setClientContact(match.contact);
       }
@@ -277,7 +280,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 
                 {showClientList && clientName.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
-                        {clients
+                        {(Array.isArray(clients) ? clients : [])
                             .filter(c => c.name.toLowerCase().includes(clientName.toLowerCase()))
                             .map((c, i) => (
                                 <div 
@@ -294,7 +297,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                                 </div>
                             ))
                         }
-                        {clients.filter(c => c.name.toLowerCase().includes(clientName.toLowerCase())).length === 0 && (
+                        {(Array.isArray(clients) ? clients : []).filter(c => c.name.toLowerCase().includes(clientName.toLowerCase())).length === 0 && (
                             <div className="p-3 text-[#9a4c6c] text-xs italic text-center">Nenhum cliente encontrado.</div>
                         )}
                     </div>
