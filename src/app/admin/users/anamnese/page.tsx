@@ -27,6 +27,14 @@ function AnamneseContent() {
   const [signaturePaths, setSignaturePaths] = useState<string[]>([]);
   const [isTracing, setIsTracing] = useState(false);
   const [traceProgress, setTraceProgress] = useState(0);
+  const [traceMessage, setTraceMessage] = useState('');
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [importImage, setImportImage] = useState<string>('');
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropRect, setCropRect] = useState({ x: 40, y: 40, w: 220, h: 120 });
+  const cropCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -142,6 +150,48 @@ function AnamneseContent() {
       canvasReady.current = false;
     };
   }, [isSignatureOpen, signatureStrokes, signaturePaths]);
+
+  useEffect(() => {
+    if (isSignatureOpen) return;
+    if (!previewCanvasRef.current) return;
+    if (signaturePreview) return;
+    if (!signaturePaths || signaturePaths.length === 0) return;
+    const canvas = previewCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#e5e7eb';
+    signaturePaths.forEach((d) => {
+      try { ctx.stroke(new Path2D(d)); } catch {}
+    });
+  }, [isSignatureOpen, signaturePaths, signaturePreview]);
+
+  useEffect(() => {
+    if (!isSignatureOpen || !isCropping || !importImage || !cropCanvasRef.current) return;
+    const canvas = cropCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 320;
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.floor(img.width * scale);
+      const h = Math.floor(img.height * scale);
+      canvas.width = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+      ctx.strokeStyle = '#ee2b7c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+    };
+    img.src = importImage;
+  }, [isSignatureOpen, isCropping, importImage, cropRect]);
 
   const startDraw = (x: number, y: number) => {
     if (!canvasRef.current) return;
@@ -418,6 +468,8 @@ function AnamneseContent() {
             >
               {signaturePreview ? (
                 <img src={signaturePreview} alt="Assinatura" className="h-full w-full object-contain" />
+              ) : signaturePaths.length > 0 ? (
+                <canvas ref={previewCanvasRef} width={300} height={120} className="h-full w-full" />
               ) : (
                 'Toque para assinar'
               )}
@@ -427,6 +479,9 @@ function AnamneseContent() {
             </div>
             {signatureError && (
               <p className="mt-2 text-xs text-rose-300">{signatureError}</p>
+            )}
+            {traceMessage && (
+              <p className="mt-2 text-xs text-emerald-300">{traceMessage}</p>
             )}
             <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2">
               <div className="text-xs text-slate-400">
@@ -471,51 +526,11 @@ function AnamneseContent() {
                   className="hidden"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (!file || !canvasRef.current) return;
-                    setIsTracing(true);
-                    setTraceProgress(10);
-                    const mod: any = await import('potrace-js/src/index.js');
-                    const POTRACE = mod.default || mod;
-                    const img = new Image();
-                    img.onload = () => {
-                      setTraceProgress(40);
-                      const maxW = 480;
-                      const maxH = 320;
-                      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-                      const temp = document.createElement('canvas');
-                      temp.width = Math.floor(img.width * scale);
-                      temp.height = Math.floor(img.height * scale);
-                      const tctx = temp.getContext('2d');
-                      if (!tctx) return;
-                      setTraceProgress(60);
-                      tctx.fillStyle = '#ffffff';
-                      tctx.fillRect(0, 0, temp.width, temp.height);
-                      tctx.drawImage(img, 0, 0, temp.width, temp.height);
-                      setTraceProgress(75);
-                      const paths = POTRACE.traceCanvas(temp, { turdsize: 2, optcurve: true, alphamax: 1 });
-                      setTraceProgress(90);
-                      const svg = POTRACE.getSVG(paths);
-                      const dList = Array.from(svg.matchAll(/d="([^"]+)"/g)).map((m: any) => m[1]);
-                      setSignaturePaths(dList);
-                      setSignatureStrokes([]);
-                      strokesRef.current = [];
-                      const rect = canvasRef.current!.getBoundingClientRect();
-                      const ctx = canvasRef.current!.getContext('2d');
-                      if (ctx) {
-                        ctx.clearRect(0, 0, rect.width, rect.height);
-                        drawPaths(dList);
-                      }
-                      setTraceProgress(100);
-                      setTimeout(() => {
-                        setIsTracing(false);
-                        setTraceProgress(0);
-                      }, 300);
-                    };
-                    img.onerror = () => {
-                      setIsTracing(false);
-                      setTraceProgress(0);
-                    };
-                    img.src = URL.createObjectURL(file);
+                    if (!file) return;
+                    setTraceMessage('');
+                    const url = URL.createObjectURL(file);
+                    setImportImage(url);
+                    setIsCropping(true);
                   }}
                 />
               </label>
@@ -547,6 +562,110 @@ function AnamneseContent() {
               Toque e arraste para assinar
             </p>
           </div>
+          {isCropping && (
+            <div className="px-4 pb-4">
+              <div className="text-xs text-slate-400 mb-2">Ajuste o recorte da assinatura</div>
+              <canvas
+                ref={cropCanvasRef}
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 touch-none"
+                onPointerDown={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  if (
+                    x >= cropRect.x && x <= cropRect.x + cropRect.w &&
+                    y >= cropRect.y && y <= cropRect.y + cropRect.h
+                  ) {
+                    setIsDraggingCrop(true);
+                    dragOffset.current = { x: x - cropRect.x, y: y - cropRect.y };
+                  }
+                }}
+                onPointerMove={(e) => {
+                  if (!isDraggingCrop) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  let x = e.clientX - rect.left - dragOffset.current.x;
+                  let y = e.clientY - rect.top - dragOffset.current.y;
+                  x = Math.max(0, Math.min(x, rect.width - cropRect.w));
+                  y = Math.max(0, Math.min(y, rect.height - cropRect.h));
+                  setCropRect({ ...cropRect, x, y });
+                }}
+                onPointerUp={() => setIsDraggingCrop(false)}
+                onPointerLeave={() => setIsDraggingCrop(false)}
+              />
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => setIsCropping(false)}
+                  className="flex-1 rounded-xl border border-slate-800 py-2 text-xs text-slate-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!importImage) return;
+                    setIsTracing(true);
+                    setTraceProgress(10);
+                    setTraceMessage('');
+                    const mod: any = await import('potrace-js/src/index.js');
+                    const POTRACE = mod.default || mod;
+                    const img = new Image();
+                    img.onload = () => {
+                      setTraceProgress(40);
+                      const previewWidth = cropCanvasRef.current?.width || 320;
+                      const scale = Math.min(1, previewWidth / img.width);
+                      const temp = document.createElement('canvas');
+                      temp.width = Math.floor(img.width * scale);
+                      temp.height = Math.floor(img.height * scale);
+                      const tctx = temp.getContext('2d');
+                      if (!tctx) return;
+                      tctx.fillStyle = '#ffffff';
+                      tctx.fillRect(0, 0, temp.width, temp.height);
+                      tctx.drawImage(img, 0, 0, temp.width, temp.height);
+                      const crop = document.createElement('canvas');
+                      crop.width = cropRect.w;
+                      crop.height = cropRect.h;
+                      const cctx = crop.getContext('2d');
+                      if (!cctx) return;
+                      cctx.drawImage(
+                        temp,
+                        cropRect.x, cropRect.y, cropRect.w, cropRect.h,
+                        0, 0, cropRect.w, cropRect.h
+                      );
+                      setTraceProgress(75);
+                      const paths = POTRACE.traceCanvas(crop, { turdsize: 2, optcurve: true, alphamax: 1 });
+                      setTraceProgress(90);
+                      const svg = POTRACE.getSVG(paths);
+                      const dList = Array.from(svg.matchAll(/d="([^"]+)"/g)).map((m: any) => m[1]);
+                      setSignaturePaths(dList);
+                      setSignatureStrokes([]);
+                      strokesRef.current = [];
+                      const rect = canvasRef.current!.getBoundingClientRect();
+                      const ctx = canvasRef.current!.getContext('2d');
+                      if (ctx) {
+                        ctx.clearRect(0, 0, rect.width, rect.height);
+                        drawPaths(dList);
+                      }
+                      setTraceMessage('Assinatura importada. Toque em "Usar assinatura" para aplicar.');
+                      setTraceProgress(100);
+                      setTimeout(() => {
+                        setIsTracing(false);
+                        setTraceProgress(0);
+                        setIsCropping(false);
+                      }, 300);
+                    };
+                    img.onerror = () => {
+                      setIsTracing(false);
+                      setTraceProgress(0);
+                      setTraceMessage('Falha ao importar imagem.');
+                    };
+                    img.src = importImage;
+                  }}
+                  className="flex-1 rounded-xl bg-[#ee2b7c] text-white text-xs font-semibold py-2"
+                >
+                  Aplicar recorte
+                </button>
+              </div>
+            </div>
+          )}
           <div className="px-4 pb-6">
               <button
                 onClick={() => {
