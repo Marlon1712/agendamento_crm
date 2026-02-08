@@ -97,7 +97,7 @@ export async function GET(request: Request) {
 
     // Slot interval from settings (default 30)
     const intervalRows: any[] = await safeQuery(
-        \"SELECT setting_value FROM configuracoes WHERE setting_key = 'slot_interval' LIMIT 1\"
+        "SELECT setting_value FROM configuracoes WHERE setting_key = 'slot_interval' LIMIT 1"
     );
     const step = Math.max(5, Number(intervalRows?.[0]?.setting_value || 30));
     const allSlots = [];
