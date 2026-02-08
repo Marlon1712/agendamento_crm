@@ -8,8 +8,7 @@ import {
     Search,
     Plus,
     X,
-    Check,
-    ArrowLeft
+    Check
 } from 'lucide-react';
 
 export default function AdminServices() {
@@ -17,7 +16,7 @@ export default function AdminServices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showFormModal, setShowFormModal] = useState(false);
-  const [serviceColor, setServiceColor] = useState<'pink' | 'blue' | 'green' | 'purple' | 'yellow'>('pink');
+  const [serviceColor, setServiceColor] = useState<string>('#ee2b7c');
   const [onlineEnabled, setOnlineEnabled] = useState(true);
   
   // State for Form
@@ -25,6 +24,7 @@ export default function AdminServices() {
     name: '', 
     duration: 60, 
     price: 0,
+    color: '#ee2b7c',
     isPromotional: false,
     promoPrice: '',
     promoStartDate: '',
@@ -84,7 +84,7 @@ export default function AdminServices() {
     e.preventDefault();
     
     // Prepare Payload
-    const payload = { ...form };
+    const payload = { ...form, color: serviceColor };
     
     // Logic: If user unchecked "hasDeadline" (so it is FALSE), ensure date is empty
     if (!payload.promoHasDeadline) {
@@ -148,6 +148,7 @@ export default function AdminServices() {
         name: '', 
         duration: 30, 
         price: 0, 
+        color: '#ee2b7c',
         isPromotional: false, 
         promoPrice: '', 
         promoStartDate: '',
@@ -163,7 +164,7 @@ export default function AdminServices() {
     setInsertIndex(null);
     setShowCalendar(false);
     setShowFormModal(false);
-    setServiceColor('pink');
+    setServiceColor('#ee2b7c');
     setOnlineEnabled(true);
   };
 
@@ -179,10 +180,12 @@ export default function AdminServices() {
         } catch (e) {}
     }
 
+    const colorValue = proc.color || '#ee2b7c';
     setForm({ 
         name: proc.name, 
         duration: proc.duration_minutes, 
         price: proc.price,
+        color: colorValue,
         isPromotional: isPromo,
         promoPrice: proc.promo_price || '',
         promoStartDate: proc.promo_start_date ? new Date(proc.promo_start_date).toISOString().split('T')[0] : '',
@@ -198,6 +201,7 @@ export default function AdminServices() {
     // Scroll removed
     setShowCalendar(false);
     setShowFormModal(true);
+    setServiceColor(colorValue);
   };
 
   const handleDelete = async (id: number) => {
@@ -347,31 +351,78 @@ export default function AdminServices() {
           <h3 className="text-[#1b0d13] dark:text-gray-200 text-base font-medium leading-normal">
             Cor na Agenda
           </h3>
-          <div className="flex gap-4 items-center justify-start flex-wrap">
-            {[
-              { key: 'pink', color: '#ffb7d5', check: '#ee2b7c' },
-              { key: 'blue', color: '#b7d5ff', check: '#3b82f6' },
-              { key: 'green', color: '#b7ffce', check: '#22c55e' },
-              { key: 'purple', color: '#e0b7ff', check: '#a855f7' },
-              { key: 'yellow', color: '#fffab7', check: '#eab308' }
-            ].map((c) => (
-              <label key={c.key} className="cursor-pointer relative">
-                <input
-                  className="peer sr-only"
-                  name="color"
-                  type="radio"
-                  value={c.key}
-                  checked={serviceColor === c.key}
-                  onChange={() => setServiceColor(c.key as any)}
-                />
-                <div
-                  className="size-11 rounded-full transition-transform hover:scale-110 peer-checked:ring-2 peer-checked:ring-offset-2 peer-checked:ring-[#ee2b7c] dark:peer-checked:ring-offset-[#221018] flex items-center justify-center"
-                  style={{ backgroundColor: c.color }}
-                >
-                  <Check size={18} className="opacity-0 peer-checked:opacity-100" style={{ color: c.check }} />
-                </div>
-              </label>
-            ))}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#9a4c6c] dark:text-[#d48fa8]">
+                Quentes
+              </span>
+              <div className="flex gap-4 items-center justify-start flex-wrap">
+                {[
+                  { label: 'pink', value: '#ee2b7c', check: '#ffffff' },
+                  { label: 'magenta', value: '#c026d3', check: '#ffffff' },
+                  { label: 'red', value: '#ef4444', check: '#ffffff' },
+                  { label: 'orange', value: '#f97316', check: '#ffffff' },
+                  { label: 'yellow', value: '#eab308', check: '#1b0d13' }
+                ].map((c) => (
+                  <label key={c.label} className="cursor-pointer relative">
+                    <input
+                      className="peer sr-only"
+                      name="color"
+                      type="radio"
+                      value={c.value}
+                      checked={serviceColor === c.value}
+                      onChange={() => {
+                        setServiceColor(c.value);
+                        setForm({ ...form, color: c.value });
+                      }}
+                    />
+                    <div
+                      className="size-11 rounded-full transition-transform hover:scale-110 peer-checked:ring-2 peer-checked:ring-offset-2 peer-checked:ring-[#ee2b7c] dark:peer-checked:ring-offset-[#221018] flex items-center justify-center"
+                      style={{ backgroundColor: c.value }}
+                    >
+                      <Check size={18} className="opacity-0 peer-checked:opacity-100" style={{ color: c.check }} />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#9a4c6c] dark:text-[#d48fa8]">
+                Frias
+              </span>
+              <div className="flex gap-4 items-center justify-start flex-wrap">
+                {[
+                  { label: 'purple', value: '#7c3aed', check: '#ffffff' },
+                  { label: 'indigo', value: '#4f46e5', check: '#ffffff' },
+                  { label: 'blue', value: '#2563eb', check: '#ffffff' },
+                  { label: 'cyan', value: '#0891b2', check: '#ffffff' },
+                  { label: 'teal', value: '#0d9488', check: '#ffffff' },
+                  { label: 'green', value: '#16a34a', check: '#ffffff' },
+                  { label: 'lime', value: '#65a30d', check: '#ffffff' }
+                ].map((c) => (
+                  <label key={c.label} className="cursor-pointer relative">
+                    <input
+                      className="peer sr-only"
+                      name="color"
+                      type="radio"
+                      value={c.value}
+                      checked={serviceColor === c.value}
+                      onChange={() => {
+                        setServiceColor(c.value);
+                        setForm({ ...form, color: c.value });
+                      }}
+                    />
+                    <div
+                      className="size-11 rounded-full transition-transform hover:scale-110 peer-checked:ring-2 peer-checked:ring-offset-2 peer-checked:ring-[#ee2b7c] dark:peer-checked:ring-offset-[#221018] flex items-center justify-center"
+                      style={{ backgroundColor: c.value }}
+                    >
+                      <Check size={18} className="opacity-0 peer-checked:opacity-100" style={{ color: c.check }} />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -405,52 +456,21 @@ export default function AdminServices() {
     proc.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getServiceImage = (name: string) => {
-    const lower = name.toLowerCase();
-    if (lower.includes('pedicure') || lower.includes('pé')) {
-      return "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=800&auto=format&fit=crop";
-    }
-    if (lower.includes('alongamento') || lower.includes('gel')) {
-      return "https://images.unsplash.com/photo-1519415943484-9fa1873496d4?q=80&w=800&auto=format&fit=crop";
-    }
-    if (lower.includes('spa')) {
-      return "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?q=80&w=800&auto=format&fit=crop";
-    }
-    return "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=800&auto=format&fit=crop";
-  };
-
   return (
-    <div className="bg-[#f8f6f7] dark:bg-[#221018] min-h-screen text-gray-900 dark:text-gray-100 flex flex-col">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f8f6f7]/95 dark:bg-[#221018]/95 backdrop-blur-sm border-b border-gray-100 dark:border-white/5 px-4 py-3 flex items-center justify-between">
-        <button
-          aria-label="Voltar"
-          className="flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-gray-800 dark:text-white"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-2">
+    <div className="bg-white dark:bg-slate-950 min-h-screen text-gray-900 dark:text-slate-100 flex flex-col">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-gray-100 dark:border-slate-900 px-6 py-4 pt-6 flex items-center justify-center">
+        <h1 className="text-xl font-bold leading-tight tracking-tight text-white">
           Gestão de Serviços
         </h1>
-        <button
-          onClick={() => {
-            resetForm();
-            setEditingId(-1);
-            setInsertIndex(0);
-            setShowFormModal(true);
-          }}
-          className="flex items-center justify-end text-[#ee2b7c] text-sm font-bold tracking-wide hover:opacity-80 transition-opacity"
-        >
-          Criar
-        </button>
       </header>
 
-      <main className="flex-1 w-full max-w-md mx-auto px-4 pt-20 pb-24 flex flex-col gap-6 overflow-y-auto">
+      <main className="flex-1 w-full max-w-2xl mx-auto px-4 pt-28 pb-24 flex flex-col gap-6 overflow-y-auto">
         <div className="relative">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
             <Search size={18} />
           </span>
           <input
-            className="w-full bg-white dark:bg-[#2f1b25] border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none transition-all"
+            className="w-full bg-white dark:bg-slate-900 border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none transition-all"
             placeholder="Buscar serviço..."
             type="text"
             value={search}
@@ -458,55 +478,46 @@ export default function AdminServices() {
           />
         </div>
 
-        {(editingId !== null) && (
-          <div className="rounded-2xl border border-[#ee2b7c]/20 bg-white dark:bg-[#2f1b25] shadow-sm p-4">
-            {renderForm(true)}
-          </div>
-        )}
-
         <div className="flex flex-col gap-4">
           {filteredProcedures.map((proc: any, index: number) => (
             <article
               key={proc.id}
               id={`service-card-${proc.id}`}
-              className="group relative overflow-hidden rounded-xl bg-white dark:bg-[#2f1b25] p-4 shadow-sm hover:shadow-md transition-all border border-transparent hover:border-[#ee2b7c]/10 dark:border-white/5"
+              className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm hover:shadow-md transition-all border border-transparent hover:border-[#ee2b7c]/10 dark:border-slate-800"
             >
-              <div className="flex items-start gap-4">
-                <div className="flex flex-col flex-[2_2_0px] gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#ee2b7c] shadow-[0_0_8px_rgba(238,43,124,0.4)]" />
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">
-                      {proc.name}
-                    </h3>
-                  </div>
-                  <p className="text-[#ee2b7c] text-sm font-medium leading-normal flex items-center gap-1">
-                    R$ {parseFloat(proc.price).toFixed(2)}
-                    <span className="text-gray-400 dark:text-gray-500">•</span>
-                    <span className="text-gray-500 dark:text-gray-400 font-normal">
-                      {proc.duration_minutes} min
-                    </span>
-                  </p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <button
-                      onClick={() => handleEdit(proc)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-white/5 hover:bg-[#ee2b7c]/10 hover:text-[#ee2b7c] text-gray-600 dark:text-gray-300 text-xs font-semibold transition-colors"
-                    >
-                      <Pencil size={14} />
-                      Editar
-                    </button>
-                    <button
-                      aria-label="Excluir serviço"
-                      onClick={() => setDeleteModal({ isOpen: true, id: proc.id })}
-                      className="flex items-center justify-center p-1.5 rounded-lg hover:bg-red-50 hover:text-red-600 text-gray-400 dark:text-gray-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2.5 rounded-full shadow-[0_0_8px_rgba(238,43,124,0.35)]"
+                    style={{ backgroundColor: proc.color || '#ee2b7c' }}
+                  />
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">
+                    {proc.name}
+                  </h3>
                 </div>
-                <div
-                  className="w-24 h-24 shrink-0 rounded-lg bg-gray-200 dark:bg-gray-800 bg-center bg-cover shadow-inner"
-                  style={{ backgroundImage: `url('${getServiceImage(proc.name || '')}')` }}
-                />
+                <p className="text-[#ee2b7c] text-sm font-medium leading-normal flex items-center gap-1">
+                  R$ {parseFloat(proc.price).toFixed(2)}
+                  <span className="text-gray-400 dark:text-gray-500">•</span>
+                  <span className="text-gray-500 dark:text-slate-400 font-normal">
+                    {proc.duration_minutes} min
+                  </span>
+                </p>
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    onClick={() => handleEdit(proc)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-slate-800 hover:bg-[#ee2b7c]/10 hover:text-[#ee2b7c] text-gray-600 dark:text-gray-300 text-xs font-semibold transition-colors"
+                  >
+                    <Pencil size={14} />
+                    Editar
+                  </button>
+                  <button
+                    aria-label="Excluir serviço"
+                    onClick={() => setDeleteModal({ isOpen: true, id: proc.id })}
+                    className="flex items-center justify-center p-1.5 rounded-lg hover:bg-red-50 hover:text-red-600 text-gray-400 dark:text-gray-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </article>
           ))}
@@ -516,11 +527,7 @@ export default function AdminServices() {
               Nenhum serviço encontrado.
             </div>
           )}
-        </div>
-      </main>
 
-      <div className="fixed bottom-0 left-0 w-full bg-gradient-to-t from-[#f8f6f7] via-[#f8f6f7] to-transparent dark:from-[#221018] dark:via-[#221018] dark:to-transparent pb-6 pt-12 px-5 pointer-events-none">
-        <div className="max-w-md mx-auto pointer-events-auto">
           <button
             onClick={() => {
               resetForm();
@@ -528,24 +535,24 @@ export default function AdminServices() {
               setInsertIndex(0);
               setShowFormModal(true);
             }}
-            className="w-full flex cursor-pointer items-center justify-center rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all gap-3"
+            className="w-full mt-2 flex items-center justify-center gap-3 rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all"
           >
             <Plus size={20} />
             <span>Adicionar Novo Serviço</span>
           </button>
         </div>
-      </div>
+      </main>
 
       {showFormModal && (
         <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 bg-black/40 backdrop-blur-md">
-          <div className="w-full max-w-md bg-[#f8f6f7] dark:bg-[#221018] rounded-2xl shadow-2xl border border-[#e7cfd9]/40 dark:border-white/10 overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#e7cfd9]/40 dark:border-white/10 flex items-center justify-between">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-[#e7cfd9]/40 dark:border-slate-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#e7cfd9]/40 dark:border-slate-800 flex items-center justify-between">
               <h2 className="text-base font-bold text-[#1b0d13] dark:text-white">
                 {editingId && editingId !== -1 ? 'Editar Serviço' : 'Novo Serviço'}
               </h2>
               <button
                 onClick={resetForm}
-                className="text-[#9a4c6c] hover:text-[#1b0d13] dark:text-[#d48fa8] dark:hover:text-white transition-colors"
+                className="text-[#9a4c6c] hover:text-[#1b0d13] dark:text-slate-400 dark:hover:text-white transition-colors"
                 aria-label="Fechar"
               >
                 <X size={18} />

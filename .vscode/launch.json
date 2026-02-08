@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-msedge",
+      "name": "Edge: Launch (localhost)",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "type": "pwa-msedge",
+      "name": "Edge: Launch Headless",
+      "request": "launch",
+      "runtimeArgs": [
+        "--headless",
+        "--remote-debugging-port=9222"
+      ],
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "type": "vscode-edge-devtools.debug",
+      "name": "Edge: Open DevTools",
+      "request": "attach",
+      "url": "http://localhost:3000"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Edge: Launch + DevTools",
+      "configurations": [
+        "Edge: Launch (localhost)",
+        "Edge: Open DevTools"
+      ]
+    }
+  ]
+}

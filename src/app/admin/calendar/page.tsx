@@ -304,6 +304,32 @@ export default function CalendarDashboard() {
         return '';
     }
 
+    const getLeadColor = (lead: any) => {
+        const byId = new Map((procedures || []).map((p: any) => [p.id, p.color || '#ee2b7c']));
+        if (lead?.procedure_id && byId.has(lead.procedure_id)) {
+            return byId.get(lead.procedure_id);
+        }
+        const byName = new Map(
+            (procedures || [])
+                .filter((p: any) => p.name)
+                .map((p: any) => [String(p.name).toLowerCase(), p.color || '#ee2b7c'])
+        );
+        const nameKey = String(lead?.procedure_name || lead?.procedure || '').toLowerCase();
+        return byName.get(nameKey) || '#ee2b7c';
+    };
+
+    const hexToRgba = (hex: string, alpha: number) => {
+        const normalized = hex.replace('#', '').trim();
+        const full = normalized.length === 3
+            ? normalized.split('').map((c) => c + c).join('')
+            : normalized.padEnd(6, '0');
+        const num = parseInt(full, 16);
+        const r = (num >> 16) & 255;
+        const g = (num >> 8) & 255;
+        const b = num & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
     const formatDateBR = (value: string) => {
         if (!value) return '';
         const d = value.includes('T') ? value.split('T')[0] : value;
@@ -550,7 +576,7 @@ export default function CalendarDashboard() {
                                                 key={lead.id}
                                                 className={`
                                                     text-[10px] w-full text-center leading-tight truncate mt-0.5 font-medium
-                                                    ${isCurrent ? 'text-[#ec4899] dark:text-fuchsia-400' : 'text-slate-400 dark:text-slate-500'}
+                                                    ${lead.status === 'pendente' ? 'text-orange-500' : isCurrent ? 'text-[#ec4899] dark:text-fuchsia-400' : 'text-slate-400 dark:text-slate-500'}
                                                 `}
                                             >
                                                 {lead.client_name || lead.name || 'Cliente'}
@@ -564,7 +590,11 @@ export default function CalendarDashboard() {
                                     // Compact Dot View (When list is shown below)
                                     <div className="flex gap-0.5 mt-1 flex-wrap justify-center px-2">
                                         {dayLeads.slice(0, 3).map((lead) => (
-                                            <div key={lead.id} className="size-1 rounded-full bg-fuchsia-500/50" />
+                                            <div
+                                                key={lead.id}
+                                                className="size-1 rounded-full"
+                                                style={{ backgroundColor: getLeadColor(lead) }}
+                                            />
                                         ))}
                                         {dayLeads.length > 3 && <div className="size-1 rounded-full bg-slate-300" />}
                                     </div>
@@ -714,10 +744,20 @@ export default function CalendarDashboard() {
                                     }
                                 }
 
-                                const renderSlotTimes = visibleSlotTimes.filter((time) => !groupedSkip.has(time) && !availableSkip.has(time) && !lunchSkip.has(time));
+                                const renderSlotTimes = visibleSlotTimes.filter((time) => {
+                                    if (leadsByStart.has(time)) return true;
+                                    const slot = slotMap.get(time);
+                                    if (slot?.available && !availableSkip.has(time)) return true;
+                                    if (availableGroupInfo.has(time)) return true;
+                                    if (slot?.reason === 'lunch' && !lunchSkip.has(time)) return true;
+                                    if (lunchGroupInfo.has(time)) return true;
+                                    if (slot && ['blocked', 'busy', 'past'].includes(slot.reason || '') && !groupedSkip.has(time)) return true;
+                                    if (groupInfo.has(time)) return true;
+                                    return false;
+                                });
                                 return (
                                     <div className="flex flex-col gap-4">
-                                        <div className="relative grid grid-cols-[42px_1fr] gap-y-2 auto-rows-min">
+                                    <div className="relative grid grid-cols-[48px_1fr] gap-y-2 auto-rows-min">
                                             {renderSlotTimes.map((time, idx) => (
                                                 <div
                                                     key={`time-${time}`}
@@ -768,12 +808,20 @@ export default function CalendarDashboard() {
                                                 if (lead) {
                                                 const span = 1;
                                                 const status = statusMap[lead.status] || statusMap.agendado;
+                                                const leadColor = getLeadColor(lead);
                                                 return (
                                                     <div
                                                         key={`lead-${lead.id}`}
-                                                        style={{ gridColumn: 2, gridRow: `${row} / span ${span}` }}
                                                         onClick={() => handleLongPress(lead)}
-                                                        className={`bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer ${lead.status === 'cancelado' ? 'p-2 opacity-70' : 'p-4'} h-auto`}
+                                                        className={`rounded-2xl shadow-sm border relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer ${lead.status === 'cancelado' ? 'p-2 opacity-70' : 'p-4'} h-auto`}
+                                                        aria-label={`Agendamento ${lead.procedure_name || 'procedimento'}`}
+                                                        data-color={leadColor}
+                                                        style={{
+                                                            gridColumn: 2,
+                                                            gridRow: `${row} / span ${span}`,
+                                                            backgroundColor: hexToRgba(leadColor, 0.12),
+                                                            borderColor: hexToRgba(leadColor, 0.35)
+                                                        }}
                                                     >
                                                         <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${status.bar}`} />
 
@@ -782,7 +830,7 @@ export default function CalendarDashboard() {
                                                                 <span className="text-sm font-bold text-[#ee2b7c]">
                                                                     {lead.appointment_time.slice(0, 5)}
                                                                 </span>
-                                                                <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
+                                                                <h3 className={`text-lg font-bold leading-tight ${lead.status === 'pendente' ? 'text-orange-500' : 'text-slate-800 dark:text-white'}`}>
                                                                     {lead.client_name || lead.name || 'Cliente'}
                                                                 </h3>
                                                                 <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -970,9 +1018,9 @@ export default function CalendarDashboard() {
                                                 setAvailableDuration(30);
                                                 setAvailableModal({ isOpen: true });
                                             }}
-                                            className="w-full rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 text-sm font-semibold py-3 hover:bg-white dark:hover:bg-slate-900 transition"
+                                            className="w-full mt-2 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 text-sm font-semibold py-3 hover:bg-white dark:hover:bg-slate-900 transition"
                                         >
-                                            + Adicionar horário disponível
+                                            + Adicionar horário
                                         </button>
                                     </div>
                                 );

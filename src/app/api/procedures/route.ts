@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { name, duration, price, isPromotional, promoPrice, promoStartDate, promoEndDate, description, observation, promoType, promoGiftItem, promoSlots } = await request.json();
+    const { name, duration, price, color, isPromotional, promoPrice, promoStartDate, promoEndDate, description, observation, promoType, promoGiftItem, promoSlots } = await request.json();
     
     // Tratamento de valores opcionais para garantir null se vazio
     const pPrice = isPromotional && promoPrice ? parseFloat(promoPrice) : null;
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
     const isPromo = isPromotional ? 1 : 0;
 
     await pool.query(
-        'INSERT INTO procedures (name, duration_minutes, price, is_promotional, promo_price, promo_start_date, promo_end_date, description, observation, promo_type, promo_gift_item, promo_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-        [name, duration, price, isPromo, pPrice, pStartDate, pEndDate, description || null, observation || null, pType, pGiftItem, pSlots]
+        'INSERT INTO procedures (name, duration_minutes, price, color, is_promotional, promo_price, promo_start_date, promo_end_date, description, observation, promo_type, promo_gift_item, promo_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+        [name, duration, price, color || null, isPromo, pPrice, pStartDate, pEndDate, description || null, observation || null, pType, pGiftItem, pSlots]
     );
     
     return NextResponse.json({ success: true });

@@ -67,6 +67,11 @@ export default function AppointmentDetailsModal({
   const price = lead.price !== undefined && lead.price !== null ? Number(lead.price) : 0;
   const endTime = lead.end_time ? formatTime(lead.end_time) : '';
   const timeRange = endTime ? `${formatTime(lead.appointment_time)} - ${endTime}` : formatTime(lead.appointment_time);
+  const contactRaw = lead.contact || '';
+  const contactDigits = contactRaw.replace(/\D/g, '');
+  const waPhone = contactDigits.startsWith('55') ? contactDigits : `55${contactDigits}`;
+  const waMessage = `Olá ${clientName}, sobre seu agendamento de ${lead.procedure_name || 'serviço'} em ${formatDateLong(lead.appointment_date)} às ${formatTime(lead.appointment_time)}.`;
+  const waLink = contactDigits ? `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}` : '';
 
   return (
     <div className="fixed inset-0 z-[2147483647] flex items-end justify-center bg-black/60 backdrop-blur-md" style={{ zIndex: 2147483647 }}>
@@ -148,7 +153,14 @@ export default function AppointmentDetailsModal({
             </button>
           </div>
 
-          <button className="mt-4 w-full bg-[#ee2b7c] hover:bg-[#d61f6b] text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors">
+          <button
+            onClick={() => {
+              if (!waLink) return;
+              window.open(waLink, '_blank', 'noopener,noreferrer');
+            }}
+            disabled={!waLink}
+            className="mt-4 w-full bg-[#ee2b7c] hover:bg-[#d61f6b] text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             <MessageCircle size={18} />
             <span>Mensagem via WhatsApp</span>
           </button>

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS procedures (
     name VARCHAR(255) NOT NULL,
     duration_minutes INT NOT NULL,
     price DECIMAL(10, 2) DEFAULT 0.00,
+    color VARCHAR(20) DEFAULT NULL,
     active BOOLEAN DEFAULT TRUE,
     is_promotional BOOLEAN DEFAULT FALSE,
     promo_price DECIMAL(10, 2) DEFAULT NULL,

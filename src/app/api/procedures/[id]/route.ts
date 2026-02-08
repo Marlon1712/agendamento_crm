@@ -25,7 +25,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await context.params;
-    const { name, duration, price, isPromotional, promoPrice, promoStartDate, promoEndDate, description, observation, promoType, promoGiftItem, promoSlots } = await request.json();
+    const { name, duration, price, color, isPromotional, promoPrice, promoStartDate, promoEndDate, description, observation, promoType, promoGiftItem, promoSlots } = await request.json();
 
     const pPrice = isPromotional && promoPrice ? parseFloat(promoPrice) : null;
     const pStartDate = isPromotional && promoStartDate ? promoStartDate : null;
@@ -36,8 +36,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     const isPromo = isPromotional ? 1 : 0;
 
     await pool.query(
-        'UPDATE procedures SET name = ?, duration_minutes = ?, price = ?, is_promotional = ?, promo_price = ?, promo_start_date = ?, promo_end_date = ?, description = ?, observation = ?, promo_type = ?, promo_gift_item = ?, promo_slots = ? WHERE id = ?', 
-        [name, duration, price, isPromo, pPrice, pStartDate, pEndDate, description || null, observation || null, pType, pGiftItem, pSlots, id]
+        'UPDATE procedures SET name = ?, duration_minutes = ?, price = ?, color = ?, is_promotional = ?, promo_price = ?, promo_start_date = ?, promo_end_date = ?, description = ?, observation = ?, promo_type = ?, promo_gift_item = ?, promo_slots = ? WHERE id = ?', 
+        [name, duration, price, color || null, isPromo, pPrice, pStartDate, pEndDate, description || null, observation || null, pType, pGiftItem, pSlots, id]
     );
 
     return NextResponse.json({ success: true });
