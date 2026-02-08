@@ -9,7 +9,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
   try {
     const body = await request.json();
-    const { status, appointmentDate, appointmentTime, procedureId, price, name, contact } = body;
+    const { status, appointmentDate, appointmentTime, procedureId, price, name, contact, cpf } = body;
     const { id } = params;
 
     // 1. Full Update / Reschedule Mode (Requires Date & Time)
@@ -62,6 +62,10 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
         if (contact) {
             query += ', contact = ?';
             qParams.push(contact);
+        }
+        if (cpf) {
+            query += ', cpf = ?';
+            qParams.push(cpf);
         }
 
         query += ' WHERE id = ?';

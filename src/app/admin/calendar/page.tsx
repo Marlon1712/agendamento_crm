@@ -576,7 +576,7 @@ export default function CalendarDashboard() {
                                                 key={lead.id}
                                                 className={`
                                                     text-[10px] w-full text-center leading-tight truncate mt-0.5 font-medium
-                                                    ${lead.status === 'pendente' ? 'text-orange-500' : isCurrent ? 'text-[#ec4899] dark:text-fuchsia-400' : 'text-slate-400 dark:text-slate-500'}
+                                                    ${lead.status === 'cancelado' ? 'text-rose-500' : lead.status === 'pendente' ? 'text-orange-500' : isCurrent ? 'text-[#ec4899] dark:text-fuchsia-400' : 'text-slate-400 dark:text-slate-500'}
                                                 `}
                                             >
                                                 {lead.client_name || lead.name || 'Cliente'}
@@ -593,7 +593,7 @@ export default function CalendarDashboard() {
                                             <div
                                                 key={lead.id}
                                                 className="size-1 rounded-full"
-                                                style={{ backgroundColor: getLeadColor(lead) }}
+                                                style={{ backgroundColor: lead.status === 'cancelado' ? '#ef4444' : getLeadColor(lead) }}
                                             />
                                         ))}
                                         {dayLeads.length > 3 && <div className="size-1 rounded-full bg-slate-300" />}
@@ -865,10 +865,10 @@ export default function CalendarDashboard() {
                                                                     Confirmar
                                                                 </button>
                                                                 <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleLongPress(lead); }}
-                                                                    className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold py-2 rounded-xl"
+                                                                    onClick={(e) => { e.stopPropagation(); confirmAction(lead.id, 'cancelado'); }}
+                                                                    className="flex-1 bg-rose-500/10 text-rose-400 text-sm font-bold py-2 rounded-xl border border-rose-500/30"
                                                                 >
-                                                                    Detalhes
+                                                                    Rejeitar
                                                                 </button>
                                                             </div>
                                                         )}

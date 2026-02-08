@@ -8,6 +8,7 @@ type BookingData = {
     id?: number;
     name: string;
     contact: string;
+    cpf?: string | null;
     procedure_id: number;
     appointment_date: string;
     appointment_time: string;
@@ -33,6 +34,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   // Form State
   const [clientName, setClientName] = useState('');
   const [clientContact, setClientContact] = useState('');
+  const [clientCpf, setClientCpf] = useState('');
   const [procedureId, setProcedureId] = useState<number | null>(null);
   const [date, setDate] = useState('');
   const [time, setTime] = useState<string | null>(null);
@@ -60,6 +62,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
         if (bookingToEdit) {
             setClientName(bookingToEdit.name);
             setClientContact(bookingToEdit.contact);
+            setClientCpf((bookingToEdit as any).cpf || '');
             setProcedureId(bookingToEdit.procedure_id);
             // Handle Date: might come as ISO string or YYYY-MM-DD
             const d = bookingToEdit.appointment_date.includes('T') ? bookingToEdit.appointment_date.split('T')[0] : bookingToEdit.appointment_date;
@@ -74,6 +77,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
             // Reset state for new booking
             setClientName('');
             setClientContact('');
+            setClientCpf('');
             setProcedureId(null);
             setDate(initialDate || '');
             setTime(initialTime || null);
@@ -112,11 +116,33 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
       const match = (Array.isArray(clients) ? clients : []).find(c => c.name === val);
       if (match) {
           setClientContact(match.contact);
+          if (match.cpf) setClientCpf(match.cpf);
       }
   };
 
   const handleSubmit = async () => {
+      const onlyDigits = (v: string) => v.replace(/\D/g, '');
+      const isValidCpf = (value: string) => {
+          const digits = onlyDigits(value);
+          if (digits.length !== 11) return false;
+          if (/^(\d)\1{10}$/.test(digits)) return false;
+          const calc = (factor: number) => {
+              let total = 0;
+              for (let i = 0; i < factor - 1; i++) {
+                  total += Number(digits[i]) * (factor - i);
+              }
+              const rest = (total * 10) % 11;
+              return rest === 10 ? 0 : rest;
+          };
+          const d1 = calc(10);
+          const d2 = calc(11);
+          return d1 === Number(digits[9]) && d2 === Number(digits[10]);
+      };
       if (!clientName || !clientContact || !date || !time || !procedureId) return;
+      if (clientCpf && !isValidCpf(clientCpf)) {
+          alert('CPF inválido.');
+          return;
+      }
       
       setLoading(true);
       try {
@@ -125,6 +151,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
           let body: any = {
               name: clientName,
               contact: clientContact,
+              cpf: clientCpf || null,
               procedure_id: procedureId,
               date,
               time,
@@ -141,6 +168,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                   appointmentDate: date,
                   appointmentTime: time,
                   procedureId: procedureId,
+                  cpf: clientCpf || null,
               };
           }
 
@@ -289,6 +317,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                                     onClick={() => {
                                         setClientName(c.name);
                                         setClientContact(c.contact);
+                                        if (c.cpf) setClientCpf(c.cpf);
                                         setShowClientList(false);
                                     }}
                                 >
@@ -318,6 +347,26 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                         if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
                         if (v.length > 10) v = `${v.slice(0,10)}-${v.slice(10)}`;
                         setClientContact(v);
+                    }}
+                />
+            </div>
+
+            {/* CPF */}
+            <div>
+                <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">CPF</label>
+                <input
+                    type="text"
+                    className="w-full p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-[#1b0d13] dark:text-[#fcf8fa] placeholder-[#9a4c6c]"
+                    placeholder="000.000.000-00"
+                    value={clientCpf}
+                    onChange={(e) => {
+                        let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+                        const p1 = v.slice(0, 3);
+                        const p2 = v.slice(3, 6);
+                        const p3 = v.slice(6, 9);
+                        const p4 = v.slice(9, 11);
+                        v = v.length <= 3 ? p1 : v.length <= 6 ? `${p1}.${p2}` : v.length <= 9 ? `${p1}.${p2}.${p3}` : `${p1}.${p2}.${p3}-${p4}`;
+                        setClientCpf(v);
                     }}
                 />
             </div>

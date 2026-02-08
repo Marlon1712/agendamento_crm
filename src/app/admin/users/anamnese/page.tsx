@@ -13,18 +13,22 @@ function AnamneseContent() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const strokesRef = useRef<{ points: { x: number; y: number }[] }[]>([]);
+  const canvasReady = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [health, setHealth] = useState({ diabetes: false, circulation: false, pregnant: false });
   const [allergies, setAllergies] = useState<string[]>([]);
+  const [otherAllergy, setOtherAllergy] = useState('');
   const [notes, setNotes] = useState('');
+  const [cpf, setCpf] = useState('');
   const [signature, setSignature] = useState<string>('');
   const [pendingSignature, setPendingSignature] = useState<string>('');
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureError, setSignatureError] = useState('');
+  const [cpfError, setCpfError] = useState('');
   const [allowWithoutSignature, setAllowWithoutSignature] = useState(false);
 
   useEffect(() => {
@@ -40,7 +44,9 @@ function AnamneseContent() {
             const parsed = JSON.parse(data.notes);
             setHealth(parsed.health || health);
             setAllergies(parsed.allergies || []);
+            setOtherAllergy(parsed.otherAllergy || '');
             setNotes(parsed.notes || '');
+            setCpf(parsed.cpf || '');
             setSignature(parsed.signature || '');
             setPendingSignature(parsed.signature || '');
           } catch {
@@ -80,27 +86,43 @@ function AnamneseContent() {
   };
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!isSignatureOpen || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#e5e7eb';
-
-    if (pendingSignature) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-      img.src = pendingSignature;
-    } else {
+    const syncCanvasSize = () => {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.clearRect(0, 0, rect.width, rect.height);
       strokesRef.current = [];
-      drawStrokes();
-    }
-  }, [pendingSignature]);
+      const base = pendingSignature || signature;
+      if (base) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        };
+        img.src = base;
+      }
+      canvasReady.current = true;
+    };
+
+    syncCanvasSize();
+    const onResize = () => syncCanvasSize();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      canvasReady.current = false;
+    };
+  }, [isSignatureOpen, signature]);
 
   const startDraw = (x: number, y: number) => {
     if (!canvasRef.current) return;
@@ -167,6 +189,8 @@ function AnamneseContent() {
   };
 
   const openSignature = () => {
+    if (signatureError) setSignatureError('');
+    setPendingSignature(signature);
     setIsSignatureOpen(true);
   };
 
@@ -181,20 +205,71 @@ function AnamneseContent() {
     );
   };
 
+  const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+  const formatCpf = (value: string) => {
+    const digits = onlyDigits(value).slice(0, 11);
+    const p1 = digits.slice(0, 3);
+    const p2 = digits.slice(3, 6);
+    const p3 = digits.slice(6, 9);
+    const p4 = digits.slice(9, 11);
+    if (digits.length <= 3) return p1;
+    if (digits.length <= 6) return `${p1}.${p2}`;
+    if (digits.length <= 9) return `${p1}.${p2}.${p3}`;
+    return `${p1}.${p2}.${p3}-${p4}`;
+  };
+
+  const isValidCpf = (value: string) => {
+    const digits = onlyDigits(value);
+    if (digits.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(digits)) return false;
+    const calc = (factor: number) => {
+      let total = 0;
+      for (let i = 0; i < factor - 1; i++) {
+        total += Number(digits[i]) * (factor - i);
+      }
+      const rest = (total * 10) % 11;
+      return rest === 10 ? 0 : rest;
+    };
+    const d1 = calc(10);
+    const d2 = calc(11);
+    return d1 === Number(digits[9]) && d2 === Number(digits[10]);
+  };
+
   const handleSave = async () => {
+    if (allergies.includes('Outro') && !otherAllergy.trim()) {
+      setSignatureError('Descreva a alergia em "Outro".');
+      return;
+    }
+    if (!cpf.trim()) {
+      setCpfError('CPF obrigatório.');
+      return;
+    }
+    if (cpf && !isValidCpf(cpf)) {
+      setCpfError('CPF inválido.');
+      return;
+    }
     if (!signature && !allowWithoutSignature) {
       setSignatureError('Assinatura obrigatória para salvar.');
       return;
     }
     setSaving(true);
-    const payload = JSON.stringify({ health, allergies, notes, signature });
-    await fetch('/api/clients/notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId ? Number(userId) : null, name, contact, notes: payload })
-    });
-    setSaving(false);
-    router.back();
+    const payload = JSON.stringify({ health, allergies, otherAllergy, notes, cpf, signature });
+    try {
+      const res = await fetch('/api/clients/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId ? Number(userId) : null, name, contact, notes: payload })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSignatureError(data?.error || 'Erro ao salvar ficha.');
+        return;
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updatedLabel = useMemo(() => {
@@ -222,9 +297,26 @@ function AnamneseContent() {
             </div>
           </div>
 
+          <section className="mt-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <label className="text-xs text-slate-400 block mb-2">CPF da cliente</label>
+            <input
+              value={cpf}
+              onChange={(e) => {
+                setCpf(formatCpf(e.target.value));
+                if (cpfError) setCpfError('');
+              }}
+              placeholder="Digite o CPF"
+              className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 ${
+                cpfError ? 'border-rose-500/60 ring-1 ring-rose-500/40' : 'border-slate-800'
+              }`}
+            />
+            {cpfError && (
+              <p className="mt-2 text-xs text-rose-300">{cpfError}</p>
+            )}
+          </section>
+
           <section className="mt-6 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-fuchsia-400 text-xs font-semibold uppercase tracking-wider">
-              <span className="material-symbols-outlined text-base">local_hospital</span>
+            <div className="flex items-center gap-2 text-fuchsia-400 text-sm font-semibold">
               Saúde Geral
             </div>
             <div className="mt-4 space-y-3">
@@ -247,8 +339,7 @@ function AnamneseContent() {
           </section>
 
           <section className="mt-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-rose-400 text-xs font-semibold uppercase tracking-wider">
-              <span className="material-symbols-outlined text-base">warning</span>
+            <div className="flex items-center gap-2 text-rose-400 text-sm font-semibold">
               Alergias
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -262,6 +353,14 @@ function AnamneseContent() {
                 </button>
               ))}
             </div>
+            {allergies.includes('Outro') && (
+              <input
+                value={otherAllergy}
+                onChange={(e) => setOtherAllergy(e.target.value)}
+                placeholder="Descreva a alergia"
+                className="mt-3 w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500"
+              />
+            )}
           </section>
 
           <section className="mt-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">

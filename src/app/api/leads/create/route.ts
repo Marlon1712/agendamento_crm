@@ -3,7 +3,7 @@ import pool from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
-    const { name, contact, date, time, procedure_id, status: providedStatus, price: customPrice } = await request.json();
+    const { name, contact, cpf, date, time, procedure_id, status: providedStatus, price: customPrice } = await request.json();
 
     if (!name || !contact || !date || !time || !procedure_id) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
@@ -112,8 +112,8 @@ export async function POST(request: Request) {
     let insertId: any = 0;
     try {
         const [res]: any = await pool.query(
-            'INSERT INTO leads (name, contact, appointment_date, appointment_time, end_time, procedure_id, price, status, is_promo, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [name, contact, date, time, endTime, procedure_id, price, status, isPromo, userId]
+            'INSERT INTO leads (name, contact, cpf, appointment_date, appointment_time, end_time, procedure_id, price, status, is_promo, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [name, contact, cpf || null, date, time, endTime, procedure_id, price, status, isPromo, userId]
         );
         insertId = res.insertId;
 

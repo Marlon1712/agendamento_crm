@@ -13,6 +13,7 @@ export async function GET() {
             l.name,
             l.contact,
             MAX(l.appointment_date) as last_visit,
+            MAX(l.cpf) as cpf,
             MAX(cn.updated_at) as notes_updated_at,
             MAX(cn.notes) as notes
           FROM leads l

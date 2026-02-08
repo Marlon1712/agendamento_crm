@@ -325,21 +325,43 @@ export default function FinancePage() {
               <span className="text-[10px] text-emerald-400 font-semibold">+8%</span>
             </div>
             <p className="text-xl font-bold mt-2">{formatCurrency((summary?.realized || 0) + (summary?.expenses || 0))}</p>
-            <div className="mt-3 h-20 rounded-lg border border-slate-800 bg-slate-950 flex items-end px-2 pb-2 gap-2 overflow-hidden">
-              {dailySeries.map((d) => {
-                const height = Math.max(8, Math.round((Math.abs(d.total) / maxAbs) * 56));
-                const isPositive = d.total >= 0;
-                return (
-                  <div key={d.key} className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                    <div
-                      className={`w-full rounded-md ${isPositive ? 'bg-emerald-400/80' : 'bg-rose-400/80'}`}
-                      style={{ height }}
-                      title={`${d.label}: ${formatCurrency(d.total)}`}
-                    />
-                    <span className="text-[10px] text-slate-400 truncate">{d.label}</span>
-                  </div>
-                );
-              })}
+            <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-3">
+              <div className="relative h-24">
+                <div className="absolute inset-0 grid grid-rows-3 gap-2 pointer-events-none">
+                  <div className="border-b border-slate-800/70" />
+                  <div className="border-b border-slate-800/50" />
+                  <div className="border-b border-slate-800/30" />
+                </div>
+                <div className="absolute bottom-2 left-0 right-0 h-px bg-slate-800/80" />
+                <div className="relative z-10 h-full flex items-end gap-2">
+                  {dailySeries.map((d) => {
+                    const height = Math.max(10, Math.round((Math.abs(d.total) / maxAbs) * 64));
+                    const isPositive = d.total >= 0;
+                    const isMax = Math.abs(d.total) === maxAbs;
+                    return (
+                      <div key={d.key} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                        {isMax && (
+                          <span className={`text-[10px] font-semibold ${isPositive ? 'text-emerald-300' : 'text-rose-300'}`}>
+                            {formatCurrency(d.total)}
+                          </span>
+                        )}
+                        <div
+                          className={`w-full rounded-md shadow-sm ${
+                            isPositive ? 'bg-emerald-400/80 shadow-emerald-400/30' : 'bg-rose-400/80 shadow-rose-400/30'
+                          }`}
+                          style={{ height }}
+                          title={`${d.label}: ${formatCurrency(d.total)}`}
+                        />
+                        <span className="text-[10px] text-slate-400 truncate">{d.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
+                <span>Saídas</span>
+                <span>Entradas</span>
+              </div>
             </div>
           </div>
         </div>
@@ -419,7 +441,7 @@ export default function FinancePage() {
             className="w-full mt-1 flex items-center justify-center gap-3 rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all"
           >
             <span className="material-symbols-outlined text-[24px]">add</span>
-            <span>Adicionar Lançamento</span>
+            <span>Lançamento</span>
           </button>
         </div>
       </div>

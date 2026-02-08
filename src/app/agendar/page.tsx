@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default function BookingPage() {
     const [procedures, setProcedures] = useState<any[]>([]);
     const [selectedService, setSelectedService] = useState<number | null>(null);
-    const [form, setForm] = useState({ name: '', contact: '' });
+    const [form, setForm] = useState({ name: '', contact: '', cpf: '' });
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [slots, setSlots] = useState<{ time: string; available: boolean; reason?: string }[]>([]);
@@ -58,8 +58,29 @@ export default function BookingPage() {
 
     const handleSubmit = async () => {
         setError('');
-        if (!selectedService || !form.name || !form.contact || !date || !time) {
+        if (!selectedService || !form.name || !form.contact || !form.cpf || !date || !time) {
             setError('Preencha seus dados, selecione um serviço, dia e horário.');
+            return;
+        }
+        const onlyDigits = (v: string) => v.replace(/\D/g, '');
+        const isValidCpf = (value: string) => {
+            const digits = onlyDigits(value);
+            if (digits.length !== 11) return false;
+            if (/^(\d)\1{10}$/.test(digits)) return false;
+            const calc = (factor: number) => {
+                let total = 0;
+                for (let i = 0; i < factor - 1; i++) {
+                    total += Number(digits[i]) * (factor - i);
+                }
+                const rest = (total * 10) % 11;
+                return rest === 10 ? 0 : rest;
+            };
+            const d1 = calc(10);
+            const d2 = calc(11);
+            return d1 === Number(digits[9]) && d2 === Number(digits[10]);
+        };
+        if (!isValidCpf(form.cpf)) {
+            setError('CPF inválido.');
             return;
         }
         setLoading(true);
@@ -70,6 +91,7 @@ export default function BookingPage() {
                 body: JSON.stringify({
                     name: form.name,
                     contact: form.contact,
+                    cpf: form.cpf,
                     date,
                     time,
                     procedure_id: selectedService
@@ -245,6 +267,28 @@ export default function BookingPage() {
                                     type="tel"
                                     value={form.contact}
                                     onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="group relative">
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 ml-1" htmlFor="cpf">CPF</label>
+                            <div className="flex items-center rounded-xl bg-[#f8f6f7] dark:bg-[#221018] border border-gray-200 dark:border-gray-700 px-4 focus-within:border-[#ee2b7c] focus-within:ring-1 focus-within:ring-[#ee2b7c] transition-all">
+                                <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '20px' }}>badge</span>
+                                <input
+                                    className="w-full bg-transparent border-none p-3 text-[#1b0d13] dark:text-white placeholder-gray-400 focus:ring-0 text-base"
+                                    id="cpf"
+                                    placeholder="000.000.000-00"
+                                    type="text"
+                                    value={form.cpf}
+                                    onChange={(e) => {
+                                        let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                        const p1 = v.slice(0, 3);
+                                        const p2 = v.slice(3, 6);
+                                        const p3 = v.slice(6, 9);
+                                        const p4 = v.slice(9, 11);
+                                        v = v.length <= 3 ? p1 : v.length <= 6 ? `${p1}.${p2}` : v.length <= 9 ? `${p1}.${p2}.${p3}` : `${p1}.${p2}.${p3}-${p4}`;
+                                        setForm({ ...form, cpf: v });
+                                    }}
                                 />
                             </div>
                         </div>

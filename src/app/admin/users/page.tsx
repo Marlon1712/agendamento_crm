@@ -80,8 +80,8 @@ export default function AdminUsers() {
           <Link href="/admin/users/clients" className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
             <div className="size-10 rounded-xl bg-fuchsia-500/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-fuchsia-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Zm-11 9a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                <path d="M19.5 8.5a2.5 2.5 0 1 0-1.7 2.37M22 20a4.5 4.5 0 0 0-6-4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
             <p className="text-sm font-semibold">Gestão de Clientes</p>

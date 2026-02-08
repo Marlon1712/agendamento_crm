@@ -360,7 +360,6 @@ export default function AdminServices() {
                 {[
                   { label: 'pink', value: '#ee2b7c', check: '#ffffff' },
                   { label: 'magenta', value: '#c026d3', check: '#ffffff' },
-                  { label: 'red', value: '#ef4444', check: '#ffffff' },
                   { label: 'orange', value: '#f97316', check: '#ffffff' },
                   { label: 'yellow', value: '#eab308', check: '#1b0d13' }
                 ].map((c) => (

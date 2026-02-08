@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS leads (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     contact VARCHAR(255) NOT NULL,
+    cpf VARCHAR(20) DEFAULT NULL,
     appointment_date DATE NOT NULL,
     appointment_time TIME NOT NULL,
     end_time TIME, -- Can be null for legacy/migrated, but should be filled
