@@ -1,0 +1,2 @@
+ALTER TABLE client_notes
+  MODIFY COLUMN notes LONGTEXT;

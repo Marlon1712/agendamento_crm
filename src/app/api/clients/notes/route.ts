@@ -19,12 +19,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ notes: rows?.[0]?.notes || '', updated_at: rows?.[0]?.updated_at || null });
     }
 
-    const [rows]: any = await pool.query(
-      'SELECT notes, updated_at FROM client_notes WHERE name = ? AND contact = ? LIMIT 1',
-      [name, contact]
-    );
-
-    return NextResponse.json({ notes: rows?.[0]?.notes || '', updated_at: rows?.[0]?.updated_at || null });
+    try {
+      const [rows]: any = await pool.query(
+        'SELECT notes, updated_at FROM client_notes WHERE name = ? AND contact = ? LIMIT 1',
+        [name, contact]
+      );
+      return NextResponse.json({ notes: rows?.[0]?.notes || '', updated_at: rows?.[0]?.updated_at || null });
+    } catch (innerError) {
+      console.warn('Fallback client_notes query (contact):', innerError);
+      const [rows]: any = await pool.query(
+        'SELECT notes, updated_at FROM client_notes WHERE name = ? LIMIT 1',
+        [name]
+      );
+      return NextResponse.json({ notes: rows?.[0]?.notes || '', updated_at: rows?.[0]?.updated_at || null });
+    }
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Erro ao buscar notas' }, { status: 500 });
@@ -46,11 +54,20 @@ export async function POST(request: Request) {
          ON DUPLICATE KEY UPDATE notes = VALUES(notes), name = VALUES(name), contact = VALUES(contact)`
       , [user_id, name || '', contact || '', notes || '']);
     } else {
-      await pool.query(
-        `INSERT INTO client_notes (name, contact, notes)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE notes = VALUES(notes)`
-      , [name, contact || '', notes || '']);
+      try {
+        await pool.query(
+          `INSERT INTO client_notes (name, contact, notes)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE notes = VALUES(notes)`
+        , [name, contact || '', notes || '']);
+      } catch (innerError) {
+        console.warn('Fallback client_notes insert (no contact):', innerError);
+        await pool.query(
+          `INSERT INTO client_notes (name, notes)
+           VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE notes = VALUES(notes)`
+        , [name, notes || '']);
+      }
     }
 
     return NextResponse.json({ success: true });

@@ -22,8 +22,11 @@ function AnamneseContent() {
   const [otherAllergy, setOtherAllergy] = useState('');
   const [notes, setNotes] = useState('');
   const [cpf, setCpf] = useState('');
-  const [signature, setSignature] = useState<string>('');
-  const [pendingSignature, setPendingSignature] = useState<string>('');
+  const [signaturePreview, setSignaturePreview] = useState<string>('');
+  const [signatureStrokes, setSignatureStrokes] = useState<{ points: { x: number; y: number }[] }[]>([]);
+  const [signaturePaths, setSignaturePaths] = useState<string[]>([]);
+  const [isTracing, setIsTracing] = useState(false);
+  const [traceProgress, setTraceProgress] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -47,8 +50,9 @@ function AnamneseContent() {
             setOtherAllergy(parsed.otherAllergy || '');
             setNotes(parsed.notes || '');
             setCpf(parsed.cpf || '');
-            setSignature(parsed.signature || '');
-            setPendingSignature(parsed.signature || '');
+            setSignatureStrokes(parsed.signatureStrokes || []);
+            setSignaturePaths(parsed.signaturePaths || []);
+            setSignaturePreview('');
           } catch {
             setNotes(data.notes || '');
           }
@@ -85,6 +89,22 @@ function AnamneseContent() {
     });
   };
 
+  const drawPaths = (paths: string[]) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#e5e7eb';
+    paths.forEach((d) => {
+      try {
+        const path = new Path2D(d);
+        ctx.stroke(path);
+      } catch {}
+    });
+  };
+
   useEffect(() => {
     if (!isSignatureOpen || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -101,14 +121,13 @@ function AnamneseContent() {
       ctx.lineCap = 'round';
       ctx.strokeStyle = '#e5e7eb';
       ctx.clearRect(0, 0, rect.width, rect.height);
-      strokesRef.current = [];
-      const base = pendingSignature || signature;
-      if (base) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, rect.width, rect.height);
-        };
-        img.src = base;
+      strokesRef.current = signatureStrokes && signatureStrokes.length > 0
+        ? signatureStrokes.map((s: any) => ({ points: [...s.points] }))
+        : [];
+      if (signaturePaths.length > 0) {
+        drawPaths(signaturePaths);
+      } else if (strokesRef.current.length > 0) {
+        drawStrokes();
       }
       canvasReady.current = true;
     };
@@ -122,12 +141,16 @@ function AnamneseContent() {
       window.removeEventListener('orientationchange', onResize);
       canvasReady.current = false;
     };
-  }, [isSignatureOpen, signature]);
+  }, [isSignatureOpen, signatureStrokes, signaturePaths]);
 
   const startDraw = (x: number, y: number) => {
     if (!canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
+    if (signaturePaths.length > 0) {
+      setSignaturePaths([]);
+      setSignaturePreview('');
+    }
     ctx.beginPath();
     ctx.moveTo(x, y);
     drawing.current = true;
@@ -149,8 +172,7 @@ function AnamneseContent() {
     if (!canvasRef.current) return;
     drawing.current = false;
     setIsDrawing(false);
-    const data = canvasRef.current.toDataURL('image/png');
-    setPendingSignature(data);
+    // keep in-memory strokes; preview generated when user accepts
   };
 
   const handlePointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -170,8 +192,10 @@ function AnamneseContent() {
   };
 
   const clearSignature = () => {
-    setPendingSignature('');
     strokesRef.current = [];
+    setSignatureStrokes([]);
+    setSignaturePreview('');
+    setSignaturePaths([]);
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -183,14 +207,12 @@ function AnamneseContent() {
     strokesRef.current.pop();
     drawStrokes();
     if (canvasRef.current) {
-      const data = canvasRef.current.toDataURL('image/png');
-      setPendingSignature(data);
+      // keep strokes only; preview generated on accept
     }
   };
 
   const openSignature = () => {
     if (signatureError) setSignatureError('');
-    setPendingSignature(signature);
     setIsSignatureOpen(true);
   };
 
@@ -249,12 +271,20 @@ function AnamneseContent() {
       setCpfError('CPF inválido.');
       return;
     }
-    if (!signature && !allowWithoutSignature) {
+    if (!allowWithoutSignature && signatureStrokes.length === 0 && signaturePaths.length === 0) {
       setSignatureError('Assinatura obrigatória para salvar.');
       return;
     }
     setSaving(true);
-    const payload = JSON.stringify({ health, allergies, otherAllergy, notes, cpf, signature });
+    const payload = JSON.stringify({
+      health,
+      allergies,
+      otherAllergy,
+      notes,
+      cpf,
+      signatureStrokes: signatureStrokes.length > 0 ? signatureStrokes : [],
+      signaturePaths: signaturePaths.length > 0 ? signaturePaths : []
+    });
     try {
       const res = await fetch('/api/clients/notes', {
         method: 'POST',
@@ -386,8 +416,8 @@ function AnamneseContent() {
               onClick={openSignature}
               className="mt-3 w-full rounded-xl border border-slate-800 bg-slate-950 h-36 flex items-center justify-center text-sm text-slate-500 hover:text-slate-300 overflow-hidden"
             >
-              {signature ? (
-                <img src={signature} alt="Assinatura" className="h-full w-full object-contain" />
+              {signaturePreview ? (
+                <img src={signaturePreview} alt="Assinatura" className="h-full w-full object-contain" />
               ) : (
                 'Toque para assinar'
               )}
@@ -433,6 +463,67 @@ function AnamneseContent() {
             </button>
             <h3 className="text-sm font-semibold text-white">Assinatura</h3>
             <div className="flex items-center gap-3">
+              <label className="text-xs text-slate-300 font-semibold cursor-pointer">
+                {isTracing ? 'Processando...' : 'Importar foto'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !canvasRef.current) return;
+                    setIsTracing(true);
+                    setTraceProgress(10);
+                    const mod: any = await import('potrace-js/src/index.js');
+                    const POTRACE = mod.default || mod;
+                    const img = new Image();
+                    img.onload = () => {
+                      setTraceProgress(40);
+                      const maxW = 480;
+                      const maxH = 320;
+                      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+                      const temp = document.createElement('canvas');
+                      temp.width = Math.floor(img.width * scale);
+                      temp.height = Math.floor(img.height * scale);
+                      const tctx = temp.getContext('2d');
+                      if (!tctx) return;
+                      setTraceProgress(60);
+                      tctx.fillStyle = '#ffffff';
+                      tctx.fillRect(0, 0, temp.width, temp.height);
+                      tctx.drawImage(img, 0, 0, temp.width, temp.height);
+                      setTraceProgress(75);
+                      const paths = POTRACE.traceCanvas(temp, { turdsize: 2, optcurve: true, alphamax: 1 });
+                      setTraceProgress(90);
+                      const svg = POTRACE.getSVG(paths);
+                      const dList = Array.from(svg.matchAll(/d="([^"]+)"/g)).map((m: any) => m[1]);
+                      setSignaturePaths(dList);
+                      setSignatureStrokes([]);
+                      strokesRef.current = [];
+                      const rect = canvasRef.current!.getBoundingClientRect();
+                      const ctx = canvasRef.current!.getContext('2d');
+                      if (ctx) {
+                        ctx.clearRect(0, 0, rect.width, rect.height);
+                        drawPaths(dList);
+                      }
+                      setTraceProgress(100);
+                      setTimeout(() => {
+                        setIsTracing(false);
+                        setTraceProgress(0);
+                      }, 300);
+                    };
+                    img.onerror = () => {
+                      setIsTracing(false);
+                      setTraceProgress(0);
+                    };
+                    img.src = URL.createObjectURL(file);
+                  }}
+                />
+              </label>
+              {isTracing && (
+                <span className="text-[10px] text-slate-400">
+                  {traceProgress}%
+                </span>
+              )}
               <button onClick={undoSignature} className="text-xs text-slate-300 font-semibold">
                 Desfazer
               </button>
@@ -457,19 +548,52 @@ function AnamneseContent() {
             </p>
           </div>
           <div className="px-4 pb-6">
-            <button
-              onClick={() => {
-                if (pendingSignature) {
-                  setSignature(pendingSignature);
-                  setSignatureError('');
-                }
-                closeSignature();
-              }}
-              disabled={!pendingSignature}
-              className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3.5 rounded-full shadow-lg shadow-fuchsia-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Usar assinatura
-            </button>
+              <button
+                onClick={() => {
+                  if (canvasRef.current && (strokesRef.current.length > 0 || signaturePaths.length > 0)) {
+                    const rect = canvasRef.current.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    const off = document.createElement('canvas');
+                    off.width = Math.max(1, Math.floor(rect.width * dpr));
+                    off.height = Math.max(1, Math.floor(rect.height * dpr));
+                    const ctx = off.getContext('2d');
+                    if (ctx) {
+                      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                      ctx.lineWidth = 2.5;
+                      ctx.lineCap = 'round';
+                      ctx.strokeStyle = '#e5e7eb';
+                      if (signaturePaths.length > 0) {
+                        signaturePaths.forEach((d) => {
+                          try { ctx.stroke(new Path2D(d)); } catch {}
+                        });
+                      } else {
+                        strokesRef.current.forEach((stroke) => {
+                          if (stroke.points.length < 2) return;
+                          ctx.beginPath();
+                          ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                          for (let i = 1; i < stroke.points.length; i++) {
+                            const p = stroke.points[i];
+                            ctx.lineTo(p.x, p.y);
+                          }
+                          ctx.stroke();
+                        });
+                      }
+                      const preview = off.toDataURL('image/webp', 0.6);
+                      setSignaturePreview(preview);
+                    }
+                    if (strokesRef.current.length > 0) {
+                      setSignatureStrokes(strokesRef.current.map((s) => ({ points: [...s.points] })));
+                      setSignaturePaths([]);
+                    }
+                    setSignatureError('');
+                  }
+                  closeSignature();
+                }}
+                disabled={isTracing || (strokesRef.current.length === 0 && signaturePaths.length === 0)}
+                className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3.5 rounded-full shadow-lg shadow-fuchsia-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Usar assinatura
+              </button>
           </div>
         </div>
       )}
