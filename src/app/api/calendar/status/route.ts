@@ -64,6 +64,6 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Erro ao buscar status do calendário' }, { status: 500 });
+    return NextResponse.json({ closedDays: [], blockedBlocks: [] }, { status: 200 });
   }
 }

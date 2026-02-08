@@ -11,16 +11,26 @@ export async function GET(request: Request) {
   }
 
   try {
+    const safeQuery = async (sql: string, params: any[] = []) => {
+      try {
+        const [rows]: any = await pool.query(sql, params);
+        return rows || [];
+      } catch (err) {
+        console.error('[slots/available] query error:', err);
+        return [];
+      }
+    };
+
     const date = new Date(dateStr);
     const dayOfWeek = date.getDay(); // 0-6
 
     // 1. Get Duration
-    const [procRows]: any = await pool.query('SELECT duration_minutes FROM procedures WHERE id = ?', [procedureId]);
+    const procRows: any[] = await safeQuery('SELECT duration_minutes FROM procedures WHERE id = ?', [procedureId]);
     if (procRows.length === 0) return NextResponse.json({ error: 'Procedimento não encontrado' }, { status: 404 });
     const duration = procRows[0].duration_minutes;
 
     // 2. Get Rules for this Day
-    const [ruleRows]: any = await pool.query(
+    const ruleRows: any[] = await safeQuery(
         'SELECT start_time, end_time, lunch_start, lunch_end, is_active FROM schedule_rules WHERE day_of_week = ?', 
         [dayOfWeek]
     );
@@ -50,9 +60,9 @@ export async function GET(request: Request) {
         leadsQuery += ' AND id != ?';
         leadsParams.push(excludeLeadId);
     }
-    const [leads]: any = await pool.query(leadsQuery, leadsParams);
+    const leads: any[] = await safeQuery(leadsQuery, leadsParams);
 
-    const [blocks]: any = await pool.query(
+    const blocks: any[] = await safeQuery(
         'SELECT id, start_time, end_time, reason FROM blocked_slots WHERE blocked_date = ?',
         [dateStr]
     );
