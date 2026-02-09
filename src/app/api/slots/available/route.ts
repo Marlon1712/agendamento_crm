@@ -110,7 +110,15 @@ export async function GET(request: Request) {
         "SELECT setting_value FROM configuracoes WHERE setting_key = 'slot_interval' LIMIT 1"
     );
     const step = Math.max(5, Number(intervalRows?.[0]?.setting_value || 30));
-    const allSlots = [];
+    const allSlots: {
+        time: string;
+        available: boolean;
+        reason?: string;
+        blockedReason?: string | null;
+        blockedId?: number | null;
+        availableOverrideId?: number | null;
+        debug?: string;
+    }[] = [];
     
     // We scan the WHOLE day to generate the grid
     for (let current = startMin; current < endMin; current += step) {
