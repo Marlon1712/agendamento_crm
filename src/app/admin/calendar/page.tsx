@@ -132,10 +132,10 @@ export default function CalendarDashboard() {
         try {
             await fetch(`/api/leads/${cancelModal.id}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ status: 'cancelado' }),
+                body: JSON.stringify({ status: 'cancelado', cancelReason: reason }),
                 headers: { 'Content-Type': 'application/json' }
             });
-            setLeads(leads.map(l => l.id === cancelModal.id ? { ...l, status: 'cancelado' } : l));
+            setLeads(leads.map(l => l.id === cancelModal.id ? { ...l, status: 'cancelado', cancel_reason: reason } : l));
         } catch (e) {
             alert('Erro ao cancelar');
         } finally {
@@ -660,7 +660,6 @@ export default function CalendarDashboard() {
                                 })();
 
                                 dayLeads.forEach((lead: any) => {
-                                    if (lead.status === 'cancelado') return;
                                     const start = lead.appointment_time.slice(0, 5);
                                     const duration = Number(lead.procedure_duration || lead.duration || 30);
                                     const span = Math.max(1, Math.ceil(duration / slotStepMinutes));
@@ -872,6 +871,11 @@ export default function CalendarDashboard() {
                                                                 {status.label || lead.status}
                                                             </span>
                                                         </div>
+                                                        {lead.status === 'cancelado' && (
+                                                          <div className="absolute top-3 right-3 size-8 rounded-full bg-rose-500/15 flex items-center justify-center text-rose-400">
+                                                            <X size={16} />
+                                                          </div>
+                                                        )}
 
                                                         {lead.status === 'pendente' && (
                                                             <div className="mt-3 pl-3 flex gap-2">

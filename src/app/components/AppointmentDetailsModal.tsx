@@ -14,6 +14,7 @@ type AppointmentLead = {
   end_time?: string;
   procedure_name?: string;
   procedure_duration?: number;
+  cancel_reason?: string | null;
 };
 
 interface AppointmentDetailsModalProps {
@@ -133,6 +134,17 @@ export default function AppointmentDetailsModal({
                   <p className="text-base font-medium text-white">{timeRange}</p>
                 </div>
               </div>
+              {status === 'cancelado' && lead.cancel_reason && (
+                <div className="flex gap-3 items-start">
+                  <div className="bg-rose-500/15 p-2 rounded-lg text-rose-400">
+                    <Ban size={16} />
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-sm font-normal">Motivo do cancelamento</p>
+                    <p className="text-base font-medium text-white">{lead.cancel_reason}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

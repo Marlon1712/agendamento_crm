@@ -1,0 +1,2 @@
+ALTER TABLE leads
+  ADD COLUMN cancel_reason VARCHAR(255) DEFAULT NULL;

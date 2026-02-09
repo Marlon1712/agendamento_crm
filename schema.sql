@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS leads (
     end_time TIME, -- Can be null for legacy/migrated, but should be filled
     procedure_id INT,
     status ENUM('agendado', 'realizado', 'cancelado', 'pendente') DEFAULT 'pendente',
+    cancel_reason VARCHAR(255) DEFAULT NULL,
     is_promo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE SET NULL,

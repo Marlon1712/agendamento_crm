@@ -9,7 +9,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
   try {
     const body = await request.json();
-    const { status, appointmentDate, appointmentTime, procedureId, price, name, contact, cpf } = body;
+    const { status, appointmentDate, appointmentTime, procedureId, price, name, contact, cpf, cancelReason } = body;
     const { id } = params;
 
     // 1. Full Update / Reschedule Mode (Requires Date & Time)
@@ -66,6 +66,10 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
         if (cpf) {
             query += ', cpf = ?';
             qParams.push(cpf);
+        }
+        if (status === 'cancelado' && cancelReason) {
+            query += ', cancel_reason = ?';
+            qParams.push(cancelReason);
         }
 
         query += ' WHERE id = ?';
@@ -155,7 +159,11 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
             }
         }
 
-        await pool.query('UPDATE leads SET status = ? WHERE id = ?', [status, id]);
+        if (status === 'cancelado' && cancelReason) {
+            await pool.query('UPDATE leads SET status = ?, cancel_reason = ? WHERE id = ?', [status, cancelReason, id]);
+        } else {
+            await pool.query('UPDATE leads SET status = ? WHERE id = ?', [status, id]);
+        }
 
         // SYNC: Status Changes
         try {
