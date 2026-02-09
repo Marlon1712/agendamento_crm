@@ -23,10 +23,10 @@ export default function AdminUsers() {
 
   const getStatus = (client: any) => {
     const hasNotes = Boolean(client?.notes && String(client.notes).trim() !== '');
-    if (!hasNotes || !client?.notes_updated_at) {
+    if (!hasNotes) {
       return { label: 'FICHA PENDENTE', className: 'text-rose-300' };
     }
-    if (!client?.last_visit) {
+    if (!client?.last_visit || !client?.notes_updated_at) {
       return { label: 'ATUALIZADA', className: 'text-emerald-300' };
     }
     const lastVisit = new Date(client.last_visit);

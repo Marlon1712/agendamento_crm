@@ -181,6 +181,11 @@ function AnamneseContent() {
       const h = Math.floor(img.height * scale);
       canvas.width = w;
       canvas.height = h;
+      if (cropRect.w === 0 || cropRect.h === 0) {
+        const nw = Math.floor(w * 0.8);
+        const nh = Math.floor(h * 0.5);
+        setCropRect({ x: Math.floor((w - nw) / 2), y: Math.floor((h - nh) / 2), w: nw, h: nh });
+      }
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -192,6 +197,36 @@ function AnamneseContent() {
     };
     img.src = importImage;
   }, [isSignatureOpen, isCropping, importImage, cropRect]);
+
+  useEffect(() => {
+    if (signaturePreview) return;
+    if (signaturePaths.length === 0 && signatureStrokes.length === 0) return;
+    const off = document.createElement('canvas');
+    off.width = 300;
+    off.height = 120;
+    const ctx = off.getContext('2d');
+    if (!ctx) return;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#e5e7eb';
+    if (signaturePaths.length > 0) {
+      signaturePaths.forEach((d) => {
+        try { ctx.stroke(new Path2D(d)); } catch {}
+      });
+    } else {
+      signatureStrokes.forEach((stroke) => {
+        if (stroke.points.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+          const p = stroke.points[i];
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+      });
+    }
+    setSignaturePreview(off.toDataURL('image/webp', 0.6));
+  }, [signaturePaths, signatureStrokes, signaturePreview]);
 
   const startDraw = (x: number, y: number) => {
     if (!canvasRef.current) return;
@@ -599,6 +634,18 @@ function AnamneseContent() {
                     className="flex-1 rounded-xl border border-slate-800 py-2 text-xs text-slate-300"
                   >
                     Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const canvas = cropCanvasRef.current;
+                      if (!canvas) return;
+                      const nw = Math.floor(canvas.width * 0.9);
+                      const nh = Math.floor(canvas.height * 0.6);
+                      setCropRect({ x: Math.floor((canvas.width - nw) / 2), y: Math.floor((canvas.height - nh) / 2), w: nw, h: nh });
+                    }}
+                    className="flex-1 rounded-xl border border-slate-800 py-2 text-xs text-slate-300"
+                  >
+                    Ajustar
                   </button>
                   <button
                     onClick={async () => {
