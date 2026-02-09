@@ -382,6 +382,21 @@ export default function CalendarDashboard() {
         }
     };
 
+    const updateLunchForDate = async (startTime: string, endTime: string) => {
+        if (!selectedDay) return;
+        await fetch(`/api/slots/block?date=${selectedDay}&reason=lunch`, { method: 'DELETE' });
+        await fetch('/api/slots/block', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                date: selectedDay,
+                startTime,
+                endTime,
+                reason: 'lunch'
+            })
+        });
+    };
+
     const handleAddAvailableSlot = async () => {
         if (!selectedDay || !availableTime) return;
         try {
@@ -1282,8 +1297,13 @@ export default function CalendarDashboard() {
                                             durationToSave = total;
                                             setBlockDuration(total);
                                         }
+                                        await updateLunchForDate(startTime, lunchEnd);
                                     }
-                                    handleBlockSlot(startTime, durationToSave, blockReason || 'Bloqueado');
+                                    if (blockMode !== 'lunch') {
+                                        handleBlockSlot(startTime, durationToSave, blockReason || 'Bloqueado');
+                                    } else {
+                                        refreshSlots();
+                                    }
                                 }
                                 setBlockModal({ isOpen: false });
                             }}

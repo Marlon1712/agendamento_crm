@@ -86,10 +86,16 @@ export async function DELETE(request: Request) {
     
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
+        const date = searchParams.get('date');
+        const reason = searchParams.get('reason');
 
-        if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+        if (!id && !(date && reason)) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-        await pool.query('DELETE FROM blocked_slots WHERE id = ?', [id]);
+        if (id) {
+            await pool.query('DELETE FROM blocked_slots WHERE id = ?', [id]);
+        } else if (date && reason) {
+            await pool.query('DELETE FROM blocked_slots WHERE blocked_date = ? AND reason = ?', [date, reason]);
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
         return NextResponse.json({ error: 'Erro ao desbloquear' }, { status: 500 });

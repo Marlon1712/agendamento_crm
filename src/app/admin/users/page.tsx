@@ -44,14 +44,31 @@ export default function AdminUsers() {
     };
   }, []);
 
+  const recentPast = useMemo(() => {
+    const now = new Date();
+    return clients
+      .filter((c) => {
+        if (!c.last_visit) return false;
+        const d = new Date(c.last_visit);
+        if (Number.isNaN(d.getTime())) return false;
+        return d <= now;
+      })
+      .sort((a, b) => {
+        const da = new Date(a.last_visit).getTime();
+        const db = new Date(b.last_visit).getTime();
+        return db - da;
+      })
+      .slice(0, 5);
+  }, [clients]);
+
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
-    return clients.filter((c) => {
+    return recentPast.filter((c) => {
       const nameMatch = String(c.name || '').toLowerCase().includes(term);
       const cpfMatch = String(c.cpf || '').replace(/\D/g, '').includes(term.replace(/\D/g, ''));
       return nameMatch || (term.length >= 3 && cpfMatch);
     });
-  }, [clients, search]);
+  }, [recentPast, search]);
 
   const getStatus = (client: any) => {
     const hasNotes = Boolean(client?.notes_updated_at || (client?.notes && String(client.notes).trim() !== ''));

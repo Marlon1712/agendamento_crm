@@ -66,7 +66,8 @@ export async function GET(request: Request) {
         'SELECT id, start_time, end_time, reason FROM blocked_slots WHERE blocked_date = ?',
         [dateStr]
     );
-    const manualBlocks = blocks.filter((b: any) => b.reason !== 'override' && b.reason !== 'available');
+    const lunchBlocks = blocks.filter((b: any) => b.reason === 'lunch');
+    const manualBlocks = blocks.filter((b: any) => b.reason !== 'override' && b.reason !== 'available' && b.reason !== 'lunch');
     const overrides = blocks.filter((b: any) => b.reason === 'override');
     const availableOverrides = blocks.filter((b: any) => b.reason === 'available');
 
@@ -85,6 +86,12 @@ export async function GET(request: Request) {
     const endMin = toMinutes(closeTime);
     const lunchStartMin = lunchStart ? toMinutes(lunchStart) : -1;
     const lunchEndMin = lunchEnd ? toMinutes(lunchEnd) : -1;
+    const lunchRanges = lunchBlocks.length > 0
+      ? lunchBlocks.map((b: any) => ({
+          start: toMinutes(b.start_time),
+          end: b.end_time ? toMinutes(b.end_time) : toMinutes(b.start_time) + 30
+        }))
+      : (lunchStartMin !== -1 && lunchEndMin !== -1 ? [{ start: lunchStartMin, end: lunchEndMin }] : []);
     
     // Current time for "past" validation
     const now = new Date();
@@ -124,7 +131,7 @@ export async function GET(request: Request) {
         }
 
         // 3. Lunch check (unless overridden)
-        if (status === 'available' && lunchStartMin !== -1) {
+        if (status === 'available' && lunchRanges.length > 0) {
             // Check overlap: (StartA < EndB) and (EndA > StartB)
             // If the SERVICE overlaps lunch
             const hasOverride = overrides.some((ov: any) => {
@@ -132,9 +139,12 @@ export async function GET(request: Request) {
                 const bEnd = ov.end_time ? toMinutes(ov.end_time) : bStart + 60;
                 return (slotStart < bEnd) && (slotEnd > bStart);
             });
-            if (!hasOverride && slotStart < lunchEndMin && slotEnd > lunchStartMin) {
-                 status = 'unavailable';
-                 unavailableReason = 'lunch';
+            if (!hasOverride) {
+                const overlapsLunch = lunchRanges.some((r) => slotStart < r.end && slotEnd > r.start);
+                if (overlapsLunch) {
+                     status = 'unavailable';
+                     unavailableReason = 'lunch';
+                }
             }
         }
 
