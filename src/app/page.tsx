@@ -21,7 +21,6 @@ export default function Home() {
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e64c7f]/20 text-[#e64c7f]">
                 <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>spa</span>
               </div>
-              <p className="text-[#111418] dark:text-white tracking-tight text-xl font-bold leading-tight">Salon Éclat</p>
             </div>
             <div className="flex items-center justify-end">
               {/* Mobile Menu Button - simplified logic */}
@@ -67,143 +66,33 @@ export default function Home() {
                   <span className="truncate">Já sou Cliente (Login)</span>
                 </Link>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Services Section */}
-        <section className="flex flex-col gap-4 px-4 pt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[#111418] dark:text-white text-[24px] font-bold leading-tight tracking-[-0.015em]">Serviços em Destaque</h2>
-          </div>
-          <div className="flex flex-col gap-3">
-            {[
-              { title: 'Manicure VIP', desc: 'Esfoliação, cuticulagem e esmaltação premium.', price: '85', link: '/agendar' },
-              { title: 'Alongamento em Gel', desc: 'Durabilidade e acabamento ultra natural.', price: '160', link: '/agendar' },
-              { title: 'Ritual de Nutrição', desc: 'Tratamento capilar profundo e revitalizante.', price: '120', link: '/agendar' }
-            ].map((svc, i) => (
-              <div key={i} className="flex items-center justify-between rounded-xl bg-[#f8f6f6] dark:bg-[#2a171d] p-4 pr-3 border border-transparent dark:border-white/5 shadow-sm hover:shadow-md transition-all">
-                <div className="flex flex-col gap-1 max-w-[65%]">
-                  <h3 className="text-base font-bold text-[#111418] dark:text-white leading-tight">{svc.title}</h3>
-                  <p className="text-sm text-[#6b5860] dark:text-[#c695a5] line-clamp-1">{svc.desc}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="text-sm font-bold text-[#e64c7f]">A partir de R$ {svc.price}</span>
-                  <Link href={svc.link} className="flex items-center justify-center rounded-full bg-[#e64c7f]/10 hover:bg-[#e64c7f] text-[#e64c7f] hover:text-white px-3 py-1.5 transition-colors text-xs font-bold">
-                    Agendar
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Booking Section */}
-        <section id="book" className="py-16 md:py-24 bg-gradient-to-b from-white to-fuchsia-50/30 dark:from-slate-950 dark:to-slate-900/50">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="text-center mb-12">
-              <span className="inline-block py-1 px-3 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-400 text-xs font-bold uppercase tracking-wider mb-3">
-                Agendamento Online
-              </span>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4">
-                Reserve seu Momento
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-                Escolha o serviço ideal e o melhor horário para você. Tudo online, rápido e sem complicação.
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-100 dark:border-slate-800 overflow-hidden min-h-[600px]">
-              <BookingWizard />
-            </div>
-          </div>
-        </section>
-
-        {/* Gallery Section */}
-        <section className="flex flex-col pt-8">
-          <div className="px-4 flex items-center justify-between">
-            <h2 className="text-[#111418] dark:text-white text-[24px] font-bold leading-tight tracking-[-0.015em]">Galeria de Inspiração</h2>
-            <a className="text-[#e64c7f] text-sm font-bold hover:underline" href="#">Ver tudo</a>
-          </div>
-          <p className="px-4 pt-1 text-sm text-[#6b5860] dark:text-[#c695a5]">Resultados reais de nossas clientes</p>
-        </section>
-
-        <section className="p-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-4">
-              <div className="group relative overflow-hidden rounded-xl aspect-[3/4] cursor-pointer">
-                <div className="w-full h-full bg-center bg-no-repeat bg-cover transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBO8dzNU8aJrkzsLgHs7UgQ0CmUYIpsKL3MIR0rh-xOvFouirZwUOa1QsTm_cFmzloaFINDWpSb09XzxeseZu_daazdtgEpDXGDiBSnG8MSNzwGkp32BwLSfujLEs_iOU_KXz7MK3twB00-_i8BR1FvhNpVNRzKqZQ9jAvRecGiWMksUbWm4KRAcamVWeSn_zC27fOkm8lfYWTQZlZKKZfr5cUSJaIQAVVXwlps1fJeCss6d-wDZ3wEOR5QQz3argZ5r_lUYP51wt0")' }}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                  <span className="text-white text-sm font-bold">Corte & Styling</span>
-                </div>
-              </div>
-              <div className="group relative overflow-hidden rounded-xl aspect-[4/5] cursor-pointer">
-                <div className="w-full h-full bg-center bg-no-repeat bg-cover transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCmobOyUOFJFfvMqHbobV7nuL5-QzuuMpHHScHr69i-hOeWjigFEzB-v5SdWYDlfRAvOf6Qz_o1vKJd3mjPnNZgbojtxJ1Lnpw1qTbdeEKPDbGoaX_fa8PQOCW7R0N8psSNVxC91fgisqAAwy_wePrDBV7pary9zr8XHLhzIFnPAWse1hSHTX8AS7s86gx4cStdpFDot6MV_4OFYASIW66a2Jk27mQCNcWU8dtwaiOqscJA1-SIfAs0gA6t-MEyxknZT3ttSwrXFyc")' }}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                  <span className="text-white text-sm font-bold">Nail Art</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4">
-              <div className="group relative overflow-hidden rounded-xl aspect-[4/5] cursor-pointer">
-                <div className="w-full h-full bg-center bg-no-repeat bg-cover transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDPNG-lvsxKJaxaefOacXl_wNDUdfYuF4-ZRFEvjowQ0CjhhdbAxgGiS7xvxGW5FGPUBq2wjOHpbie8B9Nl_5QU-IrZWnmGYfgeOC-dALnJ5WZOpDu5F1ecKgdbJ8lS0xu4MR_3ovPFaz5USfw57_RBOc8Q1B4EglU3M1yK7uPd-tvOS5dV3MPxjeulVkamCeeTDqKXrCvIxZukMOj3QOeaj-Vv2Q5KyuxnhonoV1Cav16jVckvu89aWL4P3BWoY7zwUq02NPGM858")' }}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                  <span className="text-white text-sm font-bold">Maquiagem</span>
-                </div>
-              </div>
-              <div className="group relative overflow-hidden rounded-xl aspect-[3/4] cursor-pointer">
-                <div className="w-full h-full bg-center bg-no-repeat bg-cover transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDm_Cj4_7iMqpBeydHObAzv3HqWiJSjmIB5S7eSgAtDpgl3odRqu-31eMmg8qIxHW7E8AQy64fYbJOXuyqeG5OYFsaha8GI-RZmcIKS-ovtUL75ifUPjq4Ff5Hn5mzYtw8Dz-apic_LKmuS0oJKT14YFA1C95OAD9ITFsS01Rf2pUmCeSP-O5mzKZp8MsBzcf2OEoEHsoPxMWKMKYK4j1LTKNu8O9yGp8c2rlymuFUwvO3yxnfd8np7lnz1SfVhJxGt0JepXQlx1BU")' }}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                  <span className="text-white text-sm font-bold">Coloração</span>
-                </div>
+              <div className="flex items-center justify-center gap-4 pt-3 z-10">
+                <a
+                  className="group flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-white/90 hover:text-white hover:border-[#e64c7f] transition-all"
+                  href="https://wa.me/5534992491811"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 32 32" className="h-4 w-4 fill-current">
+                    <path d="M19.11 17.45c-.27-.13-1.6-.79-1.85-.88-.25-.09-.43-.13-.6.13-.17.27-.69.88-.85 1.06-.16.18-.31.2-.58.07-.27-.13-1.13-.42-2.15-1.33-.79-.7-1.32-1.57-1.47-1.83-.15-.27-.02-.41.11-.55.12-.12.27-.31.4-.46.13-.15.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.52-.44-.45-.6-.46h-.51c-.18 0-.47.07-.71.34-.24.27-.93.91-.93 2.22 0 1.31.96 2.57 1.09 2.75.13.18 1.89 2.88 4.58 4.04.64.28 1.14.45 1.53.58.64.2 1.22.17 1.68.1.51-.08 1.6-.65 1.82-1.28.23-.63.23-1.17.16-1.28-.07-.11-.25-.18-.52-.31zM16.01 5.33c-5.84 0-10.58 4.53-10.58 10.12 0 1.79.49 3.54 1.43 5.07L5 27l6.79-1.9c1.49.8 3.18 1.22 4.92 1.22 5.84 0 10.58-4.53 10.58-10.12 0-2.69-1.11-5.23-3.13-7.13-2.01-1.9-4.69-2.94-7.15-2.94zm0 19.04c-1.58 0-3.13-.41-4.47-1.17l-.32-.18-4.03 1.13 1.1-3.75-.21-.34c-.87-1.41-1.33-3.02-1.33-4.66 0-4.74 4.05-8.59 9.05-8.59 2.41 0 4.67.93 6.38 2.54 1.71 1.61 2.65 3.75 2.65 6.05 0 4.74-4.05 8.59-9.05 8.59z"/>
+                  </svg>
+                  <span className="text-sm font-semibold">WhatsApp</span>
+                </a>
+                <a
+                  className="group flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-white/90 hover:text-white hover:border-[#e64c7f] transition-all"
+                  href="https://instagram.com/freiresuene"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                    <path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 5-5V7c0-2.757-2.243-5-5-5H7zm10 2c1.654 0 3 1.346 3 3v10c0 1.654-1.346 3-3 3H7c-1.654 0-3-1.346-3-3V7c0-1.654 1.346-3 3-3h10zm-5 3.5A5.5 5.5 0 1 0 17.5 13 5.507 5.507 0 0 0 12 7.5zm0 2A3.5 3.5 0 1 1 8.5 13 3.504 3.504 0 0 1 12 9.5zm5.75-4.25a1 1 0 1 0 1 1 1 1 0 0 0-1-1z"/>
+                  </svg>
+                  <span className="text-sm font-semibold">Instagram</span>
+                </a>
               </div>
             </div>
           </div>
         </section>
-
-        {/* About Section */}
-        <section className="mt-4">
-          <h2 className="text-[#111418] dark:text-white text-[24px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3">Sobre Nós</h2>
-        </section>
-        <section className="px-4 pb-8">
-          <div className="flex flex-col gap-4 rounded-xl bg-[#f8f6f6] dark:bg-[#2a171d] p-5 border border-[#e64c7f]/10">
-            <p className="text-[#111418] dark:text-[#e0d0d5] text-base leading-relaxed">
-              No <span className="text-[#e64c7f] font-bold">Salon Éclat</span>, acreditamos que a beleza é uma forma de expressão pessoal. Nossa equipe de especialistas dedica-se a proporcionar experiências únicas, unindo técnicas de vanguarda com um ambiente acolhedor e sofisticado.
-            </p>
-            <div className="flex gap-4 pt-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#e64c7f]">verified</span>
-                <span className="text-sm font-medium dark:text-white">Certificado</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#e64c7f]">star</span>
-                <span className="text-sm font-medium dark:text-white">5 Estrelas</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="mt-auto bg-[#1a0d11] border-t border-[#e64c7f]/10 text-white">
-          <div className="flex flex-col items-center justify-center gap-6 p-8">
-            <div className="flex items-center justify-center gap-6">
-              <a className="group flex size-12 items-center justify-center rounded-full bg-[#2a171d] hover:bg-[#e64c7f] transition-all duration-300" href="#">
-                <span className="material-symbols-outlined text-white/80 group-hover:text-white">photo_camera</span>
-              </a>
-              <a className="group flex size-12 items-center justify-center rounded-full bg-[#2a171d] hover:bg-[#e64c7f] transition-all duration-300" href="#">
-                <span className="material-symbols-outlined text-white/80 group-hover:text-white">public</span>
-              </a>
-              <a className="group flex size-12 items-center justify-center rounded-full bg-[#2a171d] hover:bg-[#e64c7f] transition-all duration-300" href="#">
-                <span className="material-symbols-outlined text-white/80 group-hover:text-white">chat</span>
-              </a>
-            </div>
-            <div className="text-center">
-              <p className="text-[#e64c7f] text-lg font-bold">Salon Éclat</p>
-              <p className="text-[#c695a5] text-xs mt-1">© 2023 Todos os direitos reservados.</p>
-            </div>
-          </div>
-          <div className="h-5 bg-[#1a0d11]"></div>
-        </footer>
       </div>
     </div>
   );

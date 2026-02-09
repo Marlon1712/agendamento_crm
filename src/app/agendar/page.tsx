@@ -251,6 +251,7 @@ export default function BookingPage() {
                                     id="name"
                                     placeholder="Digite seu nome"
                                     type="text"
+                                    autoComplete="off"
                                     value={form.name}
                                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                                 />
@@ -259,14 +260,26 @@ export default function BookingPage() {
                         <div className="group relative">
                             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 ml-1" htmlFor="whatsapp">WhatsApp</label>
                             <div className="flex items-center rounded-xl bg-[#f8f6f7] dark:bg-[#221018] border border-gray-200 dark:border-gray-700 px-4 focus-within:border-[#ee2b7c] focus-within:ring-1 focus-within:ring-[#ee2b7c] transition-all">
-                                <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '20px' }}>chat</span>
+                                <svg aria-hidden="true" viewBox="0 0 32 32" className="h-5 w-5 text-gray-400 fill-current">
+                                    <path d="M19.11 17.45c-.27-.13-1.6-.79-1.85-.88-.25-.09-.43-.13-.6.13-.17.27-.69.88-.85 1.06-.16.18-.31.2-.58.07-.27-.13-1.13-.42-2.15-1.33-.79-.7-1.32-1.57-1.47-1.83-.15-.27-.02-.41.11-.55.12-.12.27-.31.4-.46.13-.15.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.52-.44-.45-.6-.46h-.51c-.18 0-.47.07-.71.34-.24.27-.93.91-.93 2.22 0 1.31.96 2.57 1.09 2.75.13.18 1.89 2.88 4.58 4.04.64.28 1.14.45 1.53.58.64.2 1.22.17 1.68.1.51-.08 1.6-.65 1.82-1.28.23-.63.23-1.17.16-1.28-.07-.11-.25-.18-.52-.31zM16.01 5.33c-5.84 0-10.58 4.53-10.58 10.12 0 1.79.49 3.54 1.43 5.07L5 27l6.79-1.9c1.49.8 3.18 1.22 4.92 1.22 5.84 0 10.58-4.53 10.58-10.12 0-2.69-1.11-5.23-3.13-7.13-2.01-1.9-4.69-2.94-7.15-2.94zm0 19.04c-1.58 0-3.13-.41-4.47-1.17l-.32-.18-4.03 1.13 1.1-3.75-.21-.34c-.87-1.41-1.33-3.02-1.33-4.66 0-4.74 4.05-8.59 9.05-8.59 2.41 0 4.67.93 6.38 2.54 1.71 1.61 2.65 3.75 2.65 6.05 0 4.74-4.05 8.59-9.05 8.59z"/>
+                                </svg>
                                 <input
-                                    className="w-full bg-transparent border-none p-3 text-[#1b0d13] dark:text-white placeholder-gray-400 focus:ring-0 text-base"
+                                    className="w-full bg-transparent border-none p-3 text-[#1b0d13] dark:text-white placeholder-gray-400 focus:ring-0 text-base appearance-none"
                                     id="whatsapp"
                                     placeholder="(00) 00000-0000"
                                     type="tel"
+                                    inputMode="tel"
+                                    autoComplete="off"
                                     value={form.contact}
-                                    onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                                    onChange={(e) => {
+                                        let v = e.target.value.replace(/\D/g, '');
+                                        if (v.length > 11) v = v.slice(0, 11);
+                                        if (v.length > 0) {
+                                            v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+                                            v = v.replace(/(\d)(\d{4})$/, '$1-$2');
+                                        }
+                                        setForm({ ...form, contact: v });
+                                    }}
                                 />
                             </div>
                         </div>
@@ -279,6 +292,7 @@ export default function BookingPage() {
                                     id="cpf"
                                     placeholder="000.000.000-00"
                                     type="text"
+                                    autoComplete="off"
                                     value={form.cpf}
                                     onChange={(e) => {
                                         let v = e.target.value.replace(/\D/g, '').slice(0, 11);

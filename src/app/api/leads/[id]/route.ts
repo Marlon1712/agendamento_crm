@@ -86,11 +86,24 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
             const leadContact = leadRows?.[0]?.contact || contact || '';
 
             if (leadUserId) {
-                await pool.query(
-                  `INSERT INTO client_notes (user_id, name, contact, cpf, notes)
-                   VALUES (?, ?, ?, ?, '')
-                   ON DUPLICATE KEY UPDATE cpf = VALUES(cpf), name = VALUES(name), contact = VALUES(contact)`
-                , [leadUserId, leadName, leadContact, cpf]);
+                try {
+                    await pool.query(
+                      `INSERT INTO client_notes (user_id, name, contact, cpf, notes)
+                       VALUES (?, ?, ?, ?, '')
+                       ON DUPLICATE KEY UPDATE cpf = VALUES(cpf), name = VALUES(name), contact = VALUES(contact)`
+                    , [leadUserId, leadName, leadContact, cpf]);
+                } catch (err: any) {
+                    const msg = String(err?.sqlMessage || err?.message || '');
+                    if (msg.includes('Unknown column') && msg.includes('user_id')) {
+                        await pool.query(
+                          `INSERT INTO client_notes (name, contact, cpf, notes)
+                           VALUES (?, ?, ?, '')
+                           ON DUPLICATE KEY UPDATE cpf = VALUES(cpf), name = VALUES(name), contact = VALUES(contact)`
+                        , [leadName, leadContact, cpf]);
+                    } else {
+                        throw err;
+                    }
+                }
             } else {
                 await pool.query(
                   `INSERT INTO client_notes (name, contact, cpf, notes)
