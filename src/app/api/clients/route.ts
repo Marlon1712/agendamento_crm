@@ -19,7 +19,6 @@ export async function GET() {
           FROM leads l
           LEFT JOIN client_notes cn
             ON cn.name = l.name
-            AND (cn.contact = l.contact OR (cn.contact IS NULL AND l.contact IS NULL))
           WHERE l.name IS NOT NULL AND l.name != ''
           GROUP BY l.name, l.contact
           ORDER BY l.name ASC
