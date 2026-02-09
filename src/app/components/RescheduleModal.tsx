@@ -124,6 +124,8 @@ export default function RescheduleModal({
     return () => clearTimeout(t);
   }, [isOpen, date, viewMonth]);
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-[#120b12] border border-[#2a1822] rounded-3xl shadow-2xl max-w-md w-full transform transition-all scale-100 flex flex-col max-h-[85vh]">

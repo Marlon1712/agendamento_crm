@@ -1061,12 +1061,12 @@ export default function CalendarDashboard() {
                                         })}
 
                                         {canceledLeads.length > 0 && (
-                                            <div className="mt-6 space-y-3 w-full">
+                                            <div className="mt-6 space-y-3 w-full col-span-2" style={{ gridColumn: '1 / -1' }}>
                                                 <div className="text-xs uppercase tracking-wider text-rose-300 font-semibold">Cancelados</div>
                                                 {canceledLeads.map((c: any) => (
                                                     <div
                                                         key={`cancel-${c.id}`}
-                                                        className="w-full rounded-2xl shadow-sm border relative overflow-hidden p-4 h-auto"
+                                                        className="w-full rounded-2xl shadow-sm border relative overflow-hidden p-4 h-auto min-w-0"
                                                         style={{
                                                             backgroundColor: hexToRgba(getLeadColor(c), 0.08),
                                                             borderColor: hexToRgba(getLeadColor(c), 0.25)
