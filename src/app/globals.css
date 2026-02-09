@@ -75,3 +75,27 @@ body {
 .animate-pulse-scale {
   animation: pulseScale 1.5s ease-in-out infinite;
 }
+
+/* Fix white autofill background on Agendamento Online */
+.agendar-page input:-webkit-autofill,
+.agendar-page input:-webkit-autofill:hover,
+.agendar-page input:-webkit-autofill:focus,
+.agendar-page textarea:-webkit-autofill,
+.agendar-page textarea:-webkit-autofill:hover,
+.agendar-page textarea:-webkit-autofill:focus,
+.agendar-page select:-webkit-autofill,
+.agendar-page select:-webkit-autofill:hover,
+.agendar-page select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #221018 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Chromium internal autofill (Edge/Chrome) */
+.agendar-page input:-internal-autofill-selected,
+.agendar-page textarea:-internal-autofill-selected,
+.agendar-page select:-internal-autofill-selected {
+  background-color: #221018 !important;
+  color: #ffffff !important;
+}
