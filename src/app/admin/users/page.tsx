@@ -63,7 +63,7 @@ export default function AdminUsers() {
       return { label: 'ATUALIZADA', className: 'text-emerald-300' };
     }
     if (!Number.isNaN(lastVisit.getTime()) && lastVisit > new Date()) {
-      return { label: 'ATUALIZADA', className: 'text-emerald-300' };
+      return { label: 'AGENDADO', className: 'text-sky-300' };
     }
     return { label: 'PENDENTE', className: 'text-amber-300' };
   };
