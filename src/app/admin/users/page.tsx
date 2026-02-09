@@ -62,6 +62,9 @@ export default function AdminUsers() {
     if (!Number.isNaN(updated.getTime()) && updated >= lastVisit) {
       return { label: 'ATUALIZADA', className: 'text-emerald-300' };
     }
+    if (!Number.isNaN(lastVisit.getTime()) && lastVisit > new Date()) {
+      return { label: 'ATUALIZADA', className: 'text-emerald-300' };
+    }
     return { label: 'PENDENTE', className: 'text-amber-300' };
   };
 
@@ -76,7 +79,12 @@ export default function AdminUsers() {
     if (!value) return 'Sem visitas';
     const d = value.includes('T') ? value.split('T')[0] : value;
     const [y, m, day] = d.split('-');
-    return `${day}/${m}/${y}`;
+    const dateText = `${day}/${m}/${y}`;
+    const parsed = new Date(d);
+    if (!Number.isNaN(parsed.getTime()) && parsed > new Date()) {
+      return `Próxima visita: ${dateText}`;
+    }
+    return `${dateText}`;
   };
 
   const fichaLink = (c: any) => {
