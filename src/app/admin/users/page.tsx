@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 export default function AdminUsers() {
@@ -8,12 +8,40 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  const refreshRef = useRef<string>('');
+
+  const fetchClients = () => {
+    setLoading(true);
     fetch('/api/clients')
       .then((res) => res.json())
       .then((data) => setClients(Array.isArray(data) ? data : []))
       .catch(() => setClients([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  useEffect(() => {
+    const checkRefresh = () => {
+      if (typeof window === 'undefined') return;
+      const stamp = localStorage.getItem('clients:refresh') || '';
+      if (stamp && stamp !== refreshRef.current) {
+        refreshRef.current = stamp;
+        fetchClients();
+      }
+    };
+    const onFocus = () => checkRefresh();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') checkRefresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -22,7 +50,7 @@ export default function AdminUsers() {
   }, [clients, search]);
 
   const getStatus = (client: any) => {
-    const hasNotes = Boolean(client?.notes && String(client.notes).trim() !== '');
+    const hasNotes = Boolean(client?.notes_updated_at || (client?.notes && String(client.notes).trim() !== ''));
     if (!hasNotes) {
       return { label: 'FICHA PENDENTE', className: 'text-rose-300' };
     }

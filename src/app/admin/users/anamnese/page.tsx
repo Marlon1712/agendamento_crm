@@ -113,6 +113,37 @@ function AnamneseContent() {
     });
   };
 
+  const drawStrokesScaled = (
+    ctx: CanvasRenderingContext2D,
+    strokes: { points: { x: number; y: number }[] }[],
+    width: number,
+    height: number
+  ) => {
+    const points = strokes.flatMap((s) => s.points);
+    if (points.length === 0) return;
+    const minX = Math.min(...points.map((p) => p.x));
+    const maxX = Math.max(...points.map((p) => p.x));
+    const minY = Math.min(...points.map((p) => p.y));
+    const maxY = Math.max(...points.map((p) => p.y));
+    const pad = 8;
+    const srcW = Math.max(1, maxX - minX);
+    const srcH = Math.max(1, maxY - minY);
+    const scale = Math.min((width - pad * 2) / srcW, (height - pad * 2) / srcH);
+    const offsetX = (width - srcW * scale) / 2 - minX * scale;
+    const offsetY = (height - srcH * scale) / 2 - minY * scale;
+
+    strokes.forEach((stroke) => {
+      if (stroke.points.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x * scale + offsetX, stroke.points[0].y * scale + offsetY);
+      for (let i = 1; i < stroke.points.length; i++) {
+        const p = stroke.points[i];
+        ctx.lineTo(p.x * scale + offsetX, p.y * scale + offsetY);
+      }
+      ctx.stroke();
+    });
+  };
+
   useEffect(() => {
     if (!isSignatureOpen || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -214,16 +245,7 @@ function AnamneseContent() {
         try { ctx.stroke(new Path2D(d)); } catch {}
       });
     } else {
-      signatureStrokes.forEach((stroke) => {
-        if (stroke.points.length < 2) return;
-        ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          const p = stroke.points[i];
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-      });
+      drawStrokesScaled(ctx, signatureStrokes, off.width, off.height);
     }
     setSignaturePreview(off.toDataURL('image/webp', 0.6));
   }, [signaturePaths, signatureStrokes, signaturePreview]);
@@ -348,10 +370,6 @@ function AnamneseContent() {
       setSignatureError('Descreva a alergia em "Outro".');
       return;
     }
-    if (!cpf.trim()) {
-      setCpfError('CPF obrigatório.');
-      return;
-    }
     if (cpf && !isValidCpf(cpf)) {
       setCpfError('CPF inválido.');
       return;
@@ -380,6 +398,9 @@ function AnamneseContent() {
         const data = await res.json().catch(() => ({}));
         setSignatureError(data?.error || 'Erro ao salvar ficha.');
         return;
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('clients:refresh', String(Date.now()));
       }
       router.back();
     } finally {
