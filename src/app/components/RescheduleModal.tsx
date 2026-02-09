@@ -115,6 +115,15 @@ export default function RescheduleModal({
     return new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
   });
 
+  useEffect(() => {
+    if (!isOpen || !date) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-day-pill="${date}"]`) as HTMLElement | null;
+      if (el) el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [isOpen, date, viewMonth]);
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-[#120b12] border border-[#2a1822] rounded-3xl shadow-2xl max-w-md w-full transform transition-all scale-100 flex flex-col max-h-[85vh]">
@@ -174,31 +183,37 @@ export default function RescheduleModal({
                         </button>
                     </div>
                 </div>
-                <div className="mt-3 grid grid-cols-7 gap-2 text-[10px] uppercase tracking-wide text-white/50">
-                    {weekDays.map(day => (
-                        <div key={day} className="text-center">{day}</div>
-                    ))}
-                </div>
-                <div className="mt-2 grid grid-cols-7 gap-2">
-                    {gridCells.map((cell, idx) => {
-                        if (!cell) return <div key={`empty-${idx}`} className="h-9" />;
-                        const iso = formatISO(cell);
-                        const isActive = iso === date;
-                        return (
-                            <button
-                                key={iso}
-                                type="button"
-                                onClick={() => { setDate(iso); setTime(''); }}
-                                className={`h-9 rounded-xl border text-xs font-semibold transition-all ${
-                                    isActive
-                                        ? 'border-[#ee2b7c] bg-[#ee2b7c] text-white shadow-[0_0_0_2px_rgba(238,43,124,0.15)]'
-                                        : 'border-[#2a1822] bg-[#1b121b] text-white/80 hover:border-[#ee2b7c]/60'
-                                }`}
-                            >
-                                {String(cell.getDate()).padStart(2, '0')}
-                            </button>
-                        );
-                    })}
+                <div className="mt-3 overflow-x-auto no-scrollbar">
+                    <div className="flex gap-2 min-w-max">
+                        {Array.from({ length: monthDays }).map((_, idx) => {
+                            const cell = new Date(monthStart.getFullYear(), monthStart.getMonth(), idx + 1);
+                            const iso = formatISO(cell);
+                            const isActive = iso === date;
+                            const isWeekend = cell.getDay() === 0 || cell.getDay() === 6;
+                            const now = new Date();
+                            const todayIso = formatISO(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+                            const isToday = iso === todayIso;
+                            return (
+                                <button
+                                    key={iso}
+                                    type="button"
+                                    onClick={() => { setDate(iso); setTime(''); }}
+                                    data-day-pill={iso}
+                                    className={`flex flex-col items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                                        isActive
+                                            ? 'border-[#ee2b7c] bg-[#ee2b7c] text-white shadow-[0_0_0_2px_rgba(238,43,124,0.15)]'
+                                            : `border-[#2a1822] bg-[#1b121b] ${isWeekend ? 'text-rose-200/80' : 'text-white/80'} hover:border-[#ee2b7c]/60`
+                                    } ${isToday && !isActive ? 'ring-1 ring-[#ee2b7c]/40' : ''}`}
+                                >
+                                    <span className={`text-[10px] uppercase tracking-wide ${isWeekend ? 'text-rose-200/60' : 'text-white/60'}`}>{weekDays[(cell.getDay() + 6) % 7]}</span>
+                                    <span className={`text-sm font-bold ${isToday && !isActive ? 'text-[#ee2b7c]' : ''}`}>{String(cell.getDate()).padStart(2, '0')}</span>
+                                    {isToday && !isActive && (
+                                        <span className="mt-1 rounded-full bg-[#ee2b7c]/60 text-[9px] px-1.5 py-0.5 text-white/90">Hoje</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
