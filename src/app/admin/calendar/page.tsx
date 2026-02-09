@@ -458,6 +458,15 @@ export default function CalendarDashboard() {
         }
     };
 
+    const handleDeleteLead = async (id: number) => {
+        try {
+            await fetch(`/api/leads/${id}/delete`, { method: 'DELETE' });
+            setLeads((prev) => prev.filter((l) => l.id !== id));
+        } catch {
+            alert('Erro ao excluir agendamento');
+        }
+    };
+
     const statusMap: Record<string, { bar: string; badge: string; label: string; icon?: 'check' | 'hourglass'; iconBg?: string; iconColor?: string }> = {
         agendado: {
             bar: 'bg-emerald-500',
@@ -618,7 +627,48 @@ export default function CalendarDashboard() {
                                 )}
                             </div>
                         );
-                    })}
+                                        })}
+
+                                        {canceledLeads.length > 0 && (
+                                            <div className="col-span-2 mt-4 space-y-2">
+                                                <div className="text-xs uppercase tracking-wider text-rose-300 font-semibold">Cancelados</div>
+                                                {canceledLeads.map((c: any) => (
+                                                    <div
+                                                        key={`cancel-${c.id}`}
+                                                        className="rounded-2xl shadow-sm border relative overflow-hidden p-4 h-auto"
+                                                        style={{
+                                                            backgroundColor: hexToRgba(getLeadColor(c), 0.08),
+                                                            borderColor: hexToRgba(getLeadColor(c), 0.25)
+                                                        }}
+                                                    >
+                                                        <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-rose-500" />
+                                                        <div className="flex items-start justify-between pl-3">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-[#ee2b7c]">
+                                                                    {c.appointment_time.slice(0, 5)}
+                                                                </span>
+                                                                <h3 className="text-lg font-bold leading-tight text-slate-800 dark:text-white">
+                                                                    {c.client_name || c.name || 'Cliente'}
+                                                                </h3>
+                                                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                                                    {c.procedure_name || 'Procedimento'}
+                                                                </p>
+                                                                <span className="text-xs text-rose-400 mt-1">
+                                                                    {c.cancel_reason || 'Cancelado'}
+                                                                </span>
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteLead(c.id); }}
+                                                                className="size-8 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center hover:bg-rose-500/20"
+                                                                title="Excluir registro"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                 </div>
 
                 {/* DAY TIMELINE VIEW (Appears Below) */}
@@ -646,8 +696,10 @@ export default function CalendarDashboard() {
                                 const slotMap = new Map(slots.map(s => [s.time, s]));
 
                                 const leadsByStart = new Map<string, any>();
+                                const canceledByStart = new Map<string, any>();
                                 const leadSpanByStart = new Map<string, number>();
                                 const occupiedTimes = new Set<string>();
+                                const canceledLeads = dayLeads.filter((l: any) => l.status === 'cancelado');
 
                                 const slotStepMinutes = (() => {
                                     if (slotTimes.length >= 2) {
@@ -661,6 +713,10 @@ export default function CalendarDashboard() {
 
                                 dayLeads.forEach((lead: any) => {
                                     const start = lead.appointment_time.slice(0, 5);
+                                    if (lead.status === 'cancelado') {
+                                        canceledByStart.set(start, lead);
+                                        return;
+                                    }
                                     const duration = Number(lead.procedure_duration || lead.duration || 30);
                                     const span = Math.max(1, Math.ceil(duration / slotStepMinutes));
                                     leadsByStart.set(start, lead);
