@@ -46,7 +46,11 @@ export default function AdminUsers() {
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
-    return clients.filter((c) => String(c.name || '').toLowerCase().includes(term));
+    return clients.filter((c) => {
+      const nameMatch = String(c.name || '').toLowerCase().includes(term);
+      const cpfMatch = String(c.cpf || '').replace(/\D/g, '').includes(term.replace(/\D/g, ''));
+      return nameMatch || (term.length >= 3 && cpfMatch);
+    });
   }, [clients, search]);
 
   const getStatus = (client: any) => {
@@ -76,15 +80,15 @@ export default function AdminUsers() {
   };
 
   const formatLastVisit = (value?: string) => {
-    if (!value) return 'Sem visitas';
+    if (!value) return { label: 'Última visita', text: 'Sem visitas' };
     const d = value.includes('T') ? value.split('T')[0] : value;
     const [y, m, day] = d.split('-');
     const dateText = `${day}/${m}/${y}`;
     const parsed = new Date(d);
     if (!Number.isNaN(parsed.getTime()) && parsed > new Date()) {
-      return `Próxima visita: ${dateText}`;
+      return { label: 'Próxima visita', text: dateText };
     }
-    return `${dateText}`;
+    return { label: 'Última visita', text: dateText };
   };
 
   const fichaLink = (c: any) => {
@@ -93,7 +97,18 @@ export default function AdminUsers() {
       contact: c.contact || ''
     });
     if (c.user_id) params.set('user_id', String(c.user_id));
+    if (c.cpf) params.set('cpf', String(c.cpf));
     return `/admin/users/anamnese?${params.toString()}`;
+  };
+
+  const viewLink = (c: any) => {
+    const params = new URLSearchParams({
+      name: c.name || '',
+      contact: c.contact || ''
+    });
+    if (c.user_id) params.set('user_id', String(c.user_id));
+    if (c.cpf) params.set('cpf', String(c.cpf));
+    return `/admin/users/anamnese/view?${params.toString()}`;
   };
 
   return (
@@ -148,61 +163,60 @@ export default function AdminUsers() {
             <div className="text-sm text-slate-400">Nenhum cliente encontrado.</div>
           )}
 
-          {!loading && filtered.length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-full bg-slate-800 flex items-center justify-center text-sm font-bold">
-                    {getInitials(filtered[0].name)}
-                  </div>
-                  <div>
-                    <p className="font-semibold">{filtered[0].name}</p>
-                    <p className="text-xs text-slate-400">Última visita: {formatLastVisit(filtered[0].last_visit)}</p>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-bold ${getStatus(filtered[0]).className}`}>
-                  {getStatus(filtered[0]).label}
-                </span>
-              </div>
-              <div className="mt-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
-                <div className="flex items-center gap-2 text-fuchsia-400 text-xs font-semibold">
-                  <span className="material-symbols-outlined text-base">assignment</span>
-                  Resumo da Anamnese
-                </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  {(filtered[0].notes && String(filtered[0].notes).length > 0)
-                    ? 'Clique para ver os detalhes completos da anamnese.'
-                    : 'Sem ficha registrada para este cliente.'}
-                </p>
-                <Link
-                  href={fichaLink(filtered[0])}
-                  className="mt-3 w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold py-2.5 rounded-full text-center block"
-                >
-                  VER / EDITAR FICHA
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {filtered.slice(1).map((c, idx) => {
+          {!loading && filtered.length > 0 && filtered.map((c, idx) => {
             const status = getStatus(c);
             return (
-              <Link
+              <div
                 key={`${c.name}-${idx}`}
-                href={fichaLink(c)}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between text-left"
+                className="bg-slate-900 border border-slate-800 rounded-2xl p-4"
               >
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold">
-                    {getInitials(c.name)}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold">
+                      {getInitials(c.name)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold">{c.name}</p>
+                        {c.cpf && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+                            CPF
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        {formatLastVisit(c.last_visit).label}: {formatLastVisit(c.last_visit).text}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">{c.name}</p>
-                    <p className="text-xs text-slate-400">Última visita: {formatLastVisit(c.last_visit)}</p>
+                  <span className={`text-[10px] font-bold ${status.className}`}>{status.label}</span>
+                </div>
+                <div className="mt-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-fuchsia-400 text-xs font-semibold">
+                    <span className="material-symbols-outlined text-base">assignment</span>
+                    Resumo da Anamnese
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    {(c.notes && String(c.notes).length > 0)
+                      ? 'Clique para ver os detalhes completos da anamnese.'
+                      : 'Sem ficha registrada para este cliente.'}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Link
+                      href={viewLink(c)}
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2.5 rounded-full text-center block"
+                    >
+                      VISUALIZAR
+                    </Link>
+                    <Link
+                      href={fichaLink(c)}
+                      className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold py-2.5 rounded-full text-center block"
+                    >
+                      EDITAR
+                    </Link>
                   </div>
                 </div>
-                <span className={`text-[10px] font-bold ${status.className}`}>{status.label}</span>
-              </Link>
+              </div>
             );
           })}
         </div>

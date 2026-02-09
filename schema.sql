@@ -63,10 +63,12 @@ CREATE TABLE IF NOT EXISTS client_notes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     contact VARCHAR(255) DEFAULT NULL,
+    cpf VARCHAR(20) DEFAULT NULL,
     user_id INT NULL,
     notes LONGTEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_client (name, contact),
+    UNIQUE KEY uniq_client_cpf (cpf),
     UNIQUE KEY uniq_client_user (user_id)
 );
 

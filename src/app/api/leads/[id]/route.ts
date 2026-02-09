@@ -72,6 +72,37 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
         qParams.push(id);
 
         await pool.query(query, qParams);
+        if (cpf) {
+            const [leadRows]: any = await pool.query(
+              'SELECT user_id, name, contact FROM leads WHERE id = ? LIMIT 1',
+              [id]
+            );
+            const leadUserId = leadRows?.[0]?.user_id || null;
+            const leadName = leadRows?.[0]?.name || name || '';
+            const leadContact = leadRows?.[0]?.contact || contact || '';
+
+            if (leadUserId) {
+                await pool.query(
+                  `INSERT INTO client_notes (user_id, name, contact, cpf, notes)
+                   VALUES (?, ?, ?, ?, '')
+                   ON DUPLICATE KEY UPDATE cpf = VALUES(cpf), name = VALUES(name), contact = VALUES(contact)`
+                , [leadUserId, leadName, leadContact, cpf]);
+            } else {
+                await pool.query(
+                  `INSERT INTO client_notes (name, contact, cpf, notes)
+                   VALUES (?, ?, ?, '')
+                   ON DUPLICATE KEY UPDATE cpf = VALUES(cpf)`
+                , [leadName, leadContact, cpf]);
+            }
+
+            if (leadName) {
+                await pool.query(
+                  `UPDATE leads
+                   SET cpf = ?
+                   WHERE name = ? AND contact = ? AND (cpf IS NULL OR cpf = '')`
+                , [cpf, leadName, leadContact || '']);
+            }
+        }
 
         // SYNC: Update Google Calendar
         try {

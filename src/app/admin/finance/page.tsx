@@ -441,7 +441,7 @@ export default function FinancePage() {
             className="w-full mt-1 flex items-center justify-center gap-3 rounded-xl h-14 px-6 bg-[#ee2b7c] hover:bg-[#d81f6f] active:scale-[0.98] text-white text-base font-bold tracking-wide shadow-lg shadow-[#ee2b7c]/30 transition-all"
           >
             <span className="material-symbols-outlined text-[24px]">add</span>
-            <span>Lançamento</span>
+            <span>Adicionar Lançamento</span>
           </button>
         </div>
       </div>

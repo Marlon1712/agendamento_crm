@@ -9,6 +9,7 @@ function AnamneseContent() {
   const name = params.get('name') || 'Cliente';
   const contact = params.get('contact') || '';
   const userId = params.get('user_id');
+  const cpfParam = params.get('cpf') || '';
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -47,7 +48,7 @@ function AnamneseContent() {
       try {
         const url = userId
           ? `/api/clients/notes?user_id=${encodeURIComponent(userId)}`
-          : `/api/clients/notes?name=${encodeURIComponent(name)}&contact=${encodeURIComponent(contact)}`;
+          : `/api/clients/notes?name=${encodeURIComponent(name)}&contact=${encodeURIComponent(contact)}${cpfParam ? `&cpf=${encodeURIComponent(cpfParam)}` : ''}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data?.notes) {
@@ -57,13 +58,16 @@ function AnamneseContent() {
             setAllergies(parsed.allergies || []);
             setOtherAllergy(parsed.otherAllergy || '');
             setNotes(parsed.notes || '');
-            setCpf(parsed.cpf || '');
+            setCpf(parsed.cpf || data.cpf || cpfParam || '');
             setSignatureStrokes(parsed.signatureStrokes || []);
             setSignaturePaths(parsed.signaturePaths || []);
             setSignaturePreview('');
           } catch {
             setNotes(data.notes || '');
+            if (cpfParam) setCpf(cpfParam);
           }
+        } else if (data?.cpf || cpfParam) {
+          setCpf(data?.cpf || cpfParam || '');
         }
         setUpdatedAt(data?.updated_at || null);
       } finally {
@@ -392,7 +396,7 @@ function AnamneseContent() {
       const res = await fetch('/api/clients/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId ? Number(userId) : null, name, contact, notes: payload })
+        body: JSON.stringify({ user_id: userId ? Number(userId) : null, name, contact, cpf: cpf || null, notes: payload })
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

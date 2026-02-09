@@ -116,6 +116,26 @@ export async function POST(request: Request) {
             [name, contact, cpf || null, date, time, endTime, procedure_id, price, status, isPromo, userId]
         );
         insertId = res.insertId;
+        if (cpf) {
+            if (userId) {
+                await pool.query(
+                  `INSERT INTO client_notes (user_id, name, contact, cpf, notes)
+                   VALUES (?, ?, ?, ?, '')
+                   ON DUPLICATE KEY UPDATE cpf = VALUES(cpf), name = VALUES(name), contact = VALUES(contact)`
+                , [userId, name, contact || '', cpf]);
+            } else {
+                await pool.query(
+                  `INSERT INTO client_notes (name, contact, cpf, notes)
+                   VALUES (?, ?, ?, '')
+                   ON DUPLICATE KEY UPDATE cpf = VALUES(cpf)`
+                , [name, contact || '', cpf]);
+            }
+            await pool.query(
+              `UPDATE leads
+               SET cpf = ?
+               WHERE name = ? AND contact = ? AND (cpf IS NULL OR cpf = '')`
+            , [cpf, name, contact || '']);
+        }
 
         // If Admin created as 'agendado', Sync to Google Calendar immediately
         if (status === 'agendado' && accessToken) {

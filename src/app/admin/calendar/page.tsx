@@ -34,6 +34,8 @@ export default function CalendarDashboard() {
     const [blockReason, setBlockReason] = useState('Bloqueado');
     const [blockDuration, setBlockDuration] = useState(30);
     const [blockMode, setBlockMode] = useState<'block' | 'lunch'>('block');
+    const [lunchStart, setLunchStart] = useState<string>('');
+    const [lunchEnd, setLunchEnd] = useState<string>('');
     const [availableModal, setAvailableModal] = useState<{ isOpen: boolean }>({ isOpen: false });
     const [availableTime, setAvailableTime] = useState<string>('');
     const [availableDuration, setAvailableDuration] = useState(30);
@@ -950,8 +952,11 @@ export default function CalendarDashboard() {
                                                         style={{ gridColumn: 2, gridRow: row }}
                                                         onClick={() => {
                                                             setBlockMode('lunch');
-                                                            setBlockDuration(lunchGroup ? lunchGroup.count * 30 : 30);
+                                                            const duration = lunchGroup ? lunchGroup.count * 30 : 30;
+                                                            setBlockDuration(duration);
                                                             setBlockReason('Almoço');
+                                                            setLunchStart(time);
+                                                            setLunchEnd(addMinutes(time, duration));
                                                             setBlockModal({ isOpen: true, time, blockedId: null });
                                                         }}
                                                         className="flex items-center justify-between gap-3 py-2 opacity-70 h-auto cursor-pointer"
@@ -1156,13 +1161,50 @@ export default function CalendarDashboard() {
                         <div className="grid grid-cols-2 gap-3 mb-4">
                             <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                                 <div className="text-xs text-fuchsia-100/70 mb-1">Início</div>
-                                <div className="text-white font-semibold">{blockModal.time}</div>
+                                {blockMode === 'lunch' ? (
+                                  <input
+                                    type="time"
+                                    value={lunchStart || blockModal.time || ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setLunchStart(value);
+                                      if (lunchEnd) {
+                                        const [h1, m1] = value.split(':').map(Number);
+                                        const [h2, m2] = lunchEnd.split(':').map(Number);
+                                        const total = (h2 * 60 + m2) - (h1 * 60 + m1);
+                                        if (total > 0) setBlockDuration(total);
+                                      }
+                                    }}
+                                    className="w-full bg-transparent text-white font-semibold focus:outline-none"
+                                  />
+                                ) : (
+                                  <div className="text-white font-semibold">{blockModal.time}</div>
+                                )}
                             </div>
                             <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                                 <div className="text-xs text-fuchsia-100/70 mb-1">Fim</div>
-                                <div className="text-white font-semibold">
-                                    {blockModal.time ? addMinutes(blockModal.time, blockDuration) : '--:--'}
-                                </div>
+                                {blockMode === 'lunch' ? (
+                                  <input
+                                    type="time"
+                                    value={lunchEnd || (blockModal.time ? addMinutes(blockModal.time, blockDuration) : '')}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setLunchEnd(value);
+                                      const start = lunchStart || blockModal.time || '';
+                                      if (start) {
+                                        const [h1, m1] = start.split(':').map(Number);
+                                        const [h2, m2] = value.split(':').map(Number);
+                                        const total = (h2 * 60 + m2) - (h1 * 60 + m1);
+                                        if (total > 0) setBlockDuration(total);
+                                      }
+                                    }}
+                                    className="w-full bg-transparent text-white font-semibold focus:outline-none"
+                                  />
+                                ) : (
+                                  <div className="text-white font-semibold">
+                                      {blockModal.time ? addMinutes(blockModal.time, blockDuration) : '--:--'}
+                                  </div>
+                                )}
                             </div>
                         </div>
 
@@ -1227,10 +1269,21 @@ export default function CalendarDashboard() {
                         <button
                             onClick={async () => {
                                 if (blockModal.time) {
+                                    const startTime = blockMode === 'lunch' ? (lunchStart || blockModal.time) : blockModal.time;
+                                    let durationToSave = blockDuration;
                                     if (blockMode === 'block' && blockModal.blockedId) {
                                         await handleUnblockSlot(blockModal.blockedId);
                                     }
-                                    handleBlockSlot(blockModal.time, blockDuration, blockReason || 'Bloqueado');
+                                    if (blockMode === 'lunch' && lunchEnd && startTime) {
+                                        const [h1, m1] = startTime.split(':').map(Number);
+                                        const [h2, m2] = lunchEnd.split(':').map(Number);
+                                        const total = (h2 * 60 + m2) - (h1 * 60 + m1);
+                                        if (total > 0) {
+                                            durationToSave = total;
+                                            setBlockDuration(total);
+                                        }
+                                    }
+                                    handleBlockSlot(startTime, durationToSave, blockReason || 'Bloqueado');
                                 }
                                 setBlockModal({ isOpen: false });
                             }}
