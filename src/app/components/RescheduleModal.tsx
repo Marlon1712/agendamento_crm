@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock as ClockIcon, CalendarCheck } from 'lucide-react';
-import Calendar from './Calendar';
 
 interface RescheduleModalProps {
   isOpen: boolean;
@@ -32,7 +31,7 @@ export default function RescheduleModal({
   const [slots, setSlots] = useState<{time: string, available: boolean, reason?: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [isCustomTime, setIsCustomTime] = useState(false);
+  const [viewMonth, setViewMonth] = useState<Date | null>(null);
 
   // Initialize
   useEffect(() => {
@@ -47,6 +46,13 @@ export default function RescheduleModal({
         
         setSlots([]);
         setSelectedProcedure(procedureId);
+        if (d) {
+            const dt = new Date(d.split('-')[0] as any, Number(d.split('-')[1]) - 1, Number(d.split('-')[2]));
+            setViewMonth(new Date(dt.getFullYear(), dt.getMonth(), 1));
+        } else {
+            const now = new Date();
+            setViewMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+        }
         
         // Fetch procedures
         fetch('/api/procedures')
@@ -86,10 +92,32 @@ export default function RescheduleModal({
     const [y, m, day] = d.split('-');
     return `${day}/${m}/${y}`;
   };
+  const weekDays = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+  const toLocalDate = (value: string) => {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  };
+  const formatISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const selectedDate = date ? toLocalDate(date) : new Date();
+  const monthLabel = (viewMonth || selectedDate).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+  const monthStart = viewMonth ? new Date(viewMonth) : new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+  const monthDays = monthEnd.getDate();
+  const firstWeekDay = (monthStart.getDay() + 6) % 7;
+  const gridCells = Array.from({ length: firstWeekDay + monthDays }, (_, i) => {
+    if (i < firstWeekDay) return null;
+    const day = i - firstWeekDay + 1;
+    return new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+  });
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#120b12] border border-fuchsia-500/20 rounded-3xl shadow-2xl max-w-md w-full transform transition-all scale-100 flex flex-col max-h-[85vh]">
+      <div className="bg-[#120b12] border border-[#2a1822] rounded-3xl shadow-2xl max-w-md w-full transform transition-all scale-100 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between p-4 pb-2 sticky top-0 bg-[#120b12]/90 backdrop-blur border-b border-white/10 z-10">
             <button onClick={onClose} type="button" className="size-10 rounded-full bg-white/10 text-white/80 hover:text-white flex items-center justify-center">←</button>
             <h3 className="text-lg font-bold text-white">Reagendar</h3>
@@ -120,95 +148,96 @@ export default function RescheduleModal({
             </div>
 
             <h2 className="text-white text-base font-bold leading-tight tracking-[-0.015em] pb-3 pt-5">Selecione uma nova data</h2>
-            <div className="flex justify-center">
-                <Calendar selectedDate={date} onSelectDate={(d) => { setDate(d); setTime(''); }} />
+            <div className="rounded-2xl border border-[#2a1822] bg-[#160d16] p-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <CalendarIcon size={16} className="text-[#ee2b7c]" />
+                        <h4 className="text-sm font-bold text-white">Data e Hora</h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setViewMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))}
+                            className="h-7 w-7 rounded-full border border-[#2a1822] text-white/70 hover:text-white hover:border-[#ee2b7c]/60"
+                            aria-label="Mês anterior"
+                        >
+                            ‹
+                        </button>
+                        <span className="text-xs font-semibold text-[#ee2b7c] capitalize">{monthLabel}</span>
+                        <button
+                            type="button"
+                            onClick={() => setViewMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))}
+                            className="h-7 w-7 rounded-full border border-[#2a1822] text-white/70 hover:text-white hover:border-[#ee2b7c]/60"
+                            aria-label="Próximo mês"
+                        >
+                            ›
+                        </button>
+                    </div>
+                </div>
+                <div className="mt-3 grid grid-cols-7 gap-2 text-[10px] uppercase tracking-wide text-white/50">
+                    {weekDays.map(day => (
+                        <div key={day} className="text-center">{day}</div>
+                    ))}
+                </div>
+                <div className="mt-2 grid grid-cols-7 gap-2">
+                    {gridCells.map((cell, idx) => {
+                        if (!cell) return <div key={`empty-${idx}`} className="h-9" />;
+                        const iso = formatISO(cell);
+                        const isActive = iso === date;
+                        return (
+                            <button
+                                key={iso}
+                                type="button"
+                                onClick={() => { setDate(iso); setTime(''); }}
+                                className={`h-9 rounded-xl border text-xs font-semibold transition-all ${
+                                    isActive
+                                        ? 'border-[#ee2b7c] bg-[#ee2b7c] text-white shadow-[0_0_0_2px_rgba(238,43,124,0.15)]'
+                                        : 'border-[#2a1822] bg-[#1b121b] text-white/80 hover:border-[#ee2b7c]/60'
+                                }`}
+                            >
+                                {String(cell.getDate()).padStart(2, '0')}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {date && (
                 <>
                     <div className="flex items-center justify-between pb-3 pt-5">
                         <h2 className="text-white text-base font-bold leading-tight tracking-[-0.015em]">Horários para {formatDateBR(date)}</h2>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsCustomTime(!isCustomTime);
-                                setTime('');
-                            }}
-                            className="text-xs font-semibold text-[#ee2b7c] border border-[#ee2b7c]/40 rounded-full px-3 py-1 hover:bg-[#ee2b7c]/10 transition-colors"
-                        >
-                            {isCustomTime ? 'Voltar aos horários' : 'Horário personalizado'}
-                        </button>
                     </div>
-                    {isCustomTime ? (
-                        <div className="p-3 bg-[#1b121b] border border-white/10 rounded-2xl flex flex-col items-center">
-                            <div className="flex gap-2 items-center">
-                                <select 
-                                    value={time?.split(':')[0] || ''}
-                                    onChange={(e) => {
-                                        const newH = e.target.value;
-                                        const curM = time?.split(':')[1] || '00';
-                                        setTime(`${newH}:${curM}`);
-                                    }}
-                                    className="p-2 bg-[#120b12] border border-white/10 rounded-lg text-lg font-bold text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
-                                >
-                                    {Array.from({ length: 24 }).map((_, i) => {
-                                        const h = i.toString().padStart(2, '0');
-                                        return <option key={h} value={h}>{h}</option>;
-                                    })}
-                                </select>
-                                <span className="text-xl font-bold text-white">:</span>
-                                <select 
-                                    value={time?.split(':')[1] || ''}
-                                    onChange={(e) => {
-                                        const curH = time?.split(':')[0] || '09';
-                                        const newM = e.target.value;
-                                        setTime(`${curH}:${newM}`);
-                                    }}
-                                    className="p-2 bg-[#120b12] border border-white/10 rounded-lg text-lg font-bold text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
-                                >
-                                    {Array.from({ length: 12 }).map((_, i) => {
-                                        const m = (i * 5).toString().padStart(2, '0');
-                                        return <option key={m} value={m}>{m}</option>;
-                                    })}
-                                </select>
-                            </div>
+                    {loading ? (
+                        <div className="text-center py-6 text-white/60">Buscando horários...</div>
+                    ) : slots.length === 0 ? (
+                        <div className="text-center py-6 bg-[#1b121b] text-white/60 rounded-2xl border border-white/10">
+                            Sem horários livres nesta data.
                         </div>
                     ) : (
-                        loading ? (
-                            <div className="text-center py-6 text-white/60">Buscando horários...</div>
-                        ) : slots.length === 0 ? (
-                            <div className="text-center py-6 bg-[#1b121b] text-white/60 rounded-2xl border border-white/10">
-                                Sem horários livres nesta data.
-                            </div>
-                        ) : (
-                            <div className="flex gap-3 flex-wrap">
-                                {slots.map(s => {
-                                    const isSelectable = s.available || s.reason === 'past';
-                                    const isSelected = time === s.time;
-
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={s.time}
-                                            disabled={!isSelectable}
-                                            onClick={() => isSelectable && setTime(s.time)}
-                                            className={`h-10 min-w-[80px] px-4 rounded-lg text-sm font-medium transition-all ${
-                                                isSelected
-                                                    ? 'bg-[#ee2b7c] text-white shadow-md shadow-[#ee2b7c]/30' 
-                                                    : s.available 
-                                                        ? 'bg-[#1b121b] border border-white/10 text-white/80 hover:border-[#ee2b7c] hover:text-white'
-                                                        : s.reason === 'past'
-                                                            ? 'bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-                                                            : 'bg-white/5 text-white/30 opacity-50 cursor-not-allowed line-through'
-                                            }`}
-                                            title={!isSelectable ? (s.reason === 'busy' ? 'Ocupado' : 'Indisponível') : (s.reason === 'past' ? 'Horário Passado (Ajuste)' : 'Disponível')}
-                                        >
-                                            {s.time}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )
+                        <div className="grid grid-cols-4 gap-2">
+                            {slots.map(s => {
+                                const isSelectable = s.available || s.reason === 'past';
+                                const isSelected = time === s.time;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={s.time}
+                                        disabled={!isSelectable}
+                                        onClick={() => isSelectable && setTime(s.time)}
+                                        className={`rounded-full border px-0 py-2 text-xs font-bold transition-all ${
+                                            isSelected
+                                                ? 'bg-[#ee2b7c] text-white border-[#ee2b7c] shadow-[0_0_0_2px_rgba(238,43,124,0.2)]'
+                                                : !isSelectable
+                                                    ? 'border-[#2a1822] text-white/30 line-through bg-[#120b12]'
+                                                    : 'border-[#2a1822] text-white/80 hover:border-[#ee2b7c]/70 bg-[#1b121b]'
+                                        }`}
+                                        title={!isSelectable ? (s.reason === 'busy' ? 'Ocupado' : 'Indisponível') : (s.reason === 'past' ? 'Horário Passado (Ajuste)' : 'Disponível')}
+                                    >
+                                        {s.time.slice(0, 5)}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </>
             )}

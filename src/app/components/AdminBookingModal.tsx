@@ -38,6 +38,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   const [date, setDate] = useState('');
   const [time, setTime] = useState<string | null>(null);
   const [price, setPrice] = useState<string>('');
+  const [viewMonth, setViewMonth] = useState<Date | null>(null);
   
   const [availableSlots, setAvailableSlots] = useState<{time: string, available: boolean, reason?: string}[]>([]);
   const [showClientList, setShowClientList] = useState(false);
@@ -84,6 +85,17 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
         }
     }
   }, [isOpen, initialDate, initialTime, bookingToEdit]);
+
+  useEffect(() => {
+      if (!isOpen) return;
+      if (date) {
+          const d = new Date(date.split('-')[0] as any, Number(date.split('-')[1]) - 1, Number(date.split('-')[2]));
+          setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+      } else {
+          const now = new Date();
+          setViewMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+      }
+  }, [isOpen, date]);
 
   // Fetch Slots when Date/Procedure changes
   useEffect(() => {
@@ -203,7 +215,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   if (!isOpen) return null;
 
   const isEditMode = !!bookingToEdit;
-  const weekDays = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const weekDays = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
   const toLocalDate = (value: string) => {
     const [y, m, d] = value.split('-').map(Number);
     return new Date(y, (m || 1) - 1, d || 1);
@@ -215,14 +227,21 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
     return `${y}-${m}-${day}`;
   };
   const selectedDate = date ? toLocalDate(date) : new Date();
-  const startOfWeek = new Date(selectedDate);
-  startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
-  const monthLabel = selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const monthLabel = (viewMonth || selectedDate).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+  const monthStart = viewMonth ? new Date(viewMonth) : new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+  const monthDays = monthEnd.getDate();
+  const firstWeekDay = (monthStart.getDay() + 6) % 7; // monday-based
+  const gridCells = Array.from({ length: firstWeekDay + monthDays }, (_, i) => {
+    if (i < firstWeekDay) return null;
+    const day = i - firstWeekDay + 1;
+    return new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+  });
 
   return (
     <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm dark" style={{ zIndex: 2147483647 }}>
-      <div className="bg-[#120b12] border border-[#2a1822] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-        <div className="sticky top-0 z-10 bg-[#120b12]/95 backdrop-blur border-b border-[#2a1822] px-4 py-3 flex justify-between items-center shrink-0">
+      <div className="bg-[#0b1220] border border-[#1f2a44] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+        <div className="sticky top-0 z-10 bg-[#0b1220]/95 backdrop-blur border-b border-[#1f2a44] px-4 py-3 flex justify-between items-center shrink-0">
             <h3 className="text-lg font-bold text-white">{bookingToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
             <button onClick={onClose} type="button" className="text-white/70 hover:text-white transition-colors">✕</button>
         </div>
@@ -243,7 +262,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                       setAvailableSlots([]);
                       setTime('');
                     }}
-                    className="w-full appearance-none bg-[#1b121b] border border-[#2a1822] rounded-xl h-14 pl-12 pr-10 text-base text-white focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow cursor-pointer"
+                    className="w-full appearance-none bg-[#101827] border border-[#1f2a44] rounded-xl h-14 pl-12 pr-10 text-base text-white focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow cursor-pointer"
                   >
                     {procedures.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -259,7 +278,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="text-base font-medium text-white">Nota Rápida</label>
                 <div className="relative group">
                   <textarea
-                    className="w-full bg-[#1b121b] border border-[#2a1822] rounded-xl min-h-[140px] p-4 text-base text-white placeholder-[#caa5b5] focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow resize-none"
+                    className="w-full bg-[#101827] border border-[#1f2a44] rounded-xl min-h-[140px] p-4 text-base text-white placeholder-[#9aa3b2] focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow resize-none"
                     placeholder="Ex: Cliente tem alergia a acetona..."
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
@@ -282,7 +301,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">Cliente</label>
                 <input 
                     type="text"
-                    className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#caa5b5]"
+                    className="w-full p-3 bg-[#101827] border border-[#1f2a44] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#9aa3b2]"
                     placeholder="Busque ou digite o nome..."
                     value={clientName}
                     onChange={handleClientSelect}
@@ -291,13 +310,13 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 />
                 
                 {showClientList && clientName.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#1b121b] border border-[#2a1822] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#101827] border border-[#1f2a44] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
                         {(Array.isArray(clients) ? clients : [])
                             .filter(c => c.name.toLowerCase().includes(clientName.toLowerCase()))
                             .map((c, i) => (
                                 <div 
                                     key={i}
-                                    className="p-3 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer border-b border-[#2a1822] last:border-0 transition-colors"
+                                    className="p-3 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer border-b border-[#1f2a44] last:border-0 transition-colors"
                                     onClick={() => {
                                         setClientName(c.name);
                                         setClientContact(c.contact);
@@ -322,7 +341,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">Contato (WhatsApp)</label>
                 <input 
                     type="text"
-                    className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#caa5b5]"
+                    className="w-full p-3 bg-[#101827] border border-[#1f2a44] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#9aa3b2]"
                     placeholder="(XX) XXXXX-XXXX"
                     value={clientContact}
                     onChange={(e) => {
@@ -340,7 +359,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">CPF</label>
                 <input
                     type="text"
-                    className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#caa5b5]"
+                    className="w-full p-3 bg-[#101827] border border-[#1f2a44] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#9aa3b2]"
                     placeholder="000.000.000-00"
                     value={clientCpf}
                     onChange={(e) => {
@@ -362,7 +381,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                     <div className="relative">
                         <div 
                             onClick={() => setShowServiceList(!showServiceList)}
-                            className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl cursor-pointer flex justify-between items-center hover:bg-black/5 dark:hover:bg-white/5 transition-colors truncate"
+                            className="w-full p-3 bg-[#101827] border border-[#1f2a44] rounded-xl cursor-pointer flex justify-between items-center hover:bg-black/5 dark:hover:bg-white/5 transition-colors truncate"
                         >
                             <span className={`text-sm font-medium truncate ${procedureId ? 'text-white' : 'text-[#9a4c6c]'}`}>
                                 {procedureId 
@@ -372,14 +391,14 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                         </div>
 
                         {showServiceList && (
-                            <div className="absolute top-full left-0 w-[200%] md:w-full mt-1 bg-[#1b121b] border border-[#2a1822] rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                            <div className="absolute top-full left-0 w-[200%] md:w-full mt-1 bg-[#101827] border border-[#1f2a44] rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
                                 {procedures.map(p => {
                                     const isPromo = !!p.is_promotional && (!p.promo_end_date || new Date(p.promo_end_date) > new Date());
                                     return (
                                         <div 
                                             key={p.id} 
                                             onClick={() => handleServiceSelect(p)}
-                                            className={`p-3 border-b border-[#2a1822] last:border-0 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex justify-between items-center ${procedureId === p.id ? 'bg-[#ee2b7c]/10' : ''}`}
+                                            className={`p-3 border-b border-[#1f2a44] last:border-0 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex justify-between items-center ${procedureId === p.id ? 'bg-[#ee2b7c]/10' : ''}`}
                                         >
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-white text-sm">{p.name}</span>
@@ -406,7 +425,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                     <input 
                         type="number"
                         step="0.01"
-                        className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white font-bold"
+                        className="w-full p-3 bg-[#101827] border border-[#1f2a44] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white font-bold"
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                         placeholder="0.00"
@@ -416,33 +435,56 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
             </>
           )}
 
-            <div className="rounded-2xl border border-[#2a1822] bg-[#160d16] p-4">
+            <div className="rounded-2xl border border-[#1f2a44] bg-[#0f172a] p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CalendarIcon size={16} className="text-[#ee2b7c]" />
                   <h4 className="text-sm font-bold text-white">Data e Hora</h4>
                 </div>
-                <span className="text-xs font-semibold text-[#ee2b7c] capitalize">{monthLabel}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))}
+                    className="h-7 w-7 rounded-full border border-[#1f2a44] text-white/70 hover:text-white hover:border-[#ee2b7c]/60"
+                    aria-label="Mês anterior"
+                  >
+                    ‹
+                  </button>
+                  <span className="text-xs font-semibold text-[#ee2b7c] capitalize">{monthLabel}</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))}
+                    className="h-7 w-7 rounded-full border border-[#1f2a44] text-white/70 hover:text-white hover:border-[#ee2b7c]/60"
+                    aria-label="Próximo mês"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
-              <div className="mt-3 grid grid-cols-7 gap-2">
-                {Array.from({ length: 7 }).map((_, i) => {
-                  const d = new Date(startOfWeek);
-                  d.setDate(startOfWeek.getDate() + i);
-                  const iso = formatISO(d);
+              <div className="mt-3 grid grid-cols-7 gap-2 text-[10px] uppercase tracking-wide text-white/50">
+                {weekDays.map(day => (
+                  <div key={day} className="text-center">{day}</div>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {gridCells.map((cell, idx) => {
+                  if (!cell) {
+                    return <div key={`empty-${idx}`} className="h-9" />;
+                  }
+                  const iso = formatISO(cell);
                   const isActive = iso === date;
                   return (
                     <button
                       key={iso}
                       type="button"
                       onClick={() => setDate(iso)}
-                      className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 text-xs font-semibold transition-all ${
+                      className={`h-9 rounded-xl border text-xs font-semibold transition-all ${
                         isActive
                           ? 'border-[#ee2b7c] bg-[#ee2b7c] text-white shadow-[0_0_0_2px_rgba(238,43,124,0.15)]'
-                          : 'border-[#2a1822] bg-[#1b121b] text-white/80 hover:border-[#ee2b7c]/60'
+                          : 'border-[#1f2a44] bg-[#101827] text-white/80 hover:border-[#ee2b7c]/60'
                       }`}
                     >
-                      <span className="text-[10px] uppercase tracking-wide text-white/60">{weekDays[d.getDay()]}</span>
-                      <span className="text-sm font-bold">{String(d.getDate()).padStart(2, '0')}</span>
+                      {String(cell.getDate()).padStart(2, '0')}
                     </button>
                   );
                 })}
@@ -469,8 +511,8 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                               time === slot.time
                                 ? 'bg-[#ee2b7c] text-white border-[#ee2b7c] shadow-[0_0_0_2px_rgba(238,43,124,0.2)]'
                                 : isDisabled
-                                  ? 'border-[#2a1822] text-white/30 line-through'
-                                  : 'border-[#2a1822] text-white/80 hover:border-[#ee2b7c]/70'
+                                  ? 'border-[#1f2a44] text-white/30 line-through bg-[#0b1220]'
+                                  : 'border-[#1f2a44] text-white/80 hover:border-[#ee2b7c]/70 bg-[#101827]'
                             }`}
                           >
                             {slot.time.slice(0, 5)}
@@ -489,7 +531,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
 
         </div>
 
-        <div className="sticky bottom-0 bg-[#120b12]/95 backdrop-blur border-t border-[#2a1822] p-4 flex flex-col gap-3">
+        <div className="sticky bottom-0 bg-[#0b1220]/95 backdrop-blur border-t border-[#1f2a44] p-4 flex flex-col gap-3">
             <button 
                 onClick={handleSubmit}
                 type="button"
