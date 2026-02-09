@@ -207,28 +207,28 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   const isEditMode = !!bookingToEdit;
 
   return (
-    <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" style={{ zIndex: 2147483647 }}>
-      <div className="bg-[#f8f6f7] dark:bg-[#221018] border border-[#e7cfd9] dark:border-[#522a3a] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-        <div className="sticky top-0 z-10 bg-[#f8f6f7]/95 dark:bg-[#221018]/95 backdrop-blur border-b border-[#e7cfd9] dark:border-[#522a3a] px-4 py-3 flex justify-between items-center shrink-0">
-            <h3 className="text-lg font-bold text-[#1b0d13] dark:text-white">{bookingToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
-            <button onClick={onClose} type="button" className="text-[#1b0d13]/60 dark:text-white/70 hover:text-[#1b0d13] dark:hover:text-white transition-colors">✕</button>
+    <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm dark" style={{ zIndex: 2147483647 }}>
+      <div className="bg-[#120b12] border border-[#2a1822] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+        <div className="sticky top-0 z-10 bg-[#120b12]/95 backdrop-blur border-b border-[#2a1822] px-4 py-3 flex justify-between items-center shrink-0">
+            <h3 className="text-lg font-bold text-white">{bookingToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
+            <button onClick={onClose} type="button" className="text-white/70 hover:text-white transition-colors">✕</button>
         </div>
         
         <div className="px-4 py-6 space-y-5 overflow-y-auto">
           {isEditMode && (
             <>
-              <div className="bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="bg-[#1b121b] border border-[#2a1822] rounded-xl p-4 flex items-center gap-4 shadow-sm">
                 <div className="bg-[#ee2b7c]/10 dark:bg-[#ee2b7c]/20 p-3 rounded-full flex items-center justify-center shrink-0">
                   <CalendarIcon size={18} className="text-[#ee2b7c]" />
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 uppercase tracking-wider mb-0.5">Data e Hora</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-semibold text-[#1b0d13] dark:text-white">
+                    <span className="text-base font-semibold text-white">
                       {date ? date.split('-').reverse().join('/') : '--/--/----'}
                     </span>
-                    <span className="w-1 h-1 rounded-full bg-[#e7cfd9] dark:bg-[#522a3a]"></span>
-                    <span className="text-base font-semibold text-[#1b0d13] dark:text-white">
+                    <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                    <span className="text-base font-semibold text-white">
                       {time ? time.slice(0, 5) : '--:--'}
                     </span>
                   </div>
@@ -247,7 +247,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-base font-medium text-[#1b0d13] dark:text-white">Serviço</label>
+                <label className="text-base font-medium text-white">Serviço</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
                     <Scissors size={16} className="text-[#9a4c6c] group-focus-within:text-[#ee2b7c]" />
@@ -259,7 +259,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                       setAvailableSlots([]);
                       setTime('');
                     }}
-                    className="w-full appearance-none bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl h-14 pl-12 pr-10 text-base text-[#1b0d13] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow cursor-pointer"
+                    className="w-full appearance-none bg-[#1b121b] border border-[#2a1822] rounded-xl h-14 pl-12 pr-10 text-base text-white focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow cursor-pointer"
                   >
                     {procedures.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -272,10 +272,10 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-base font-medium text-[#1b0d13] dark:text-white">Nota Rápida</label>
+                <label className="text-base font-medium text-white">Nota Rápida</label>
                 <div className="relative group">
                   <textarea
-                    className="w-full bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl min-h-[140px] p-4 text-base text-[#1b0d13] dark:text-white placeholder-[#9a4c6c] focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow resize-none"
+                    className="w-full bg-[#1b121b] border border-[#2a1822] rounded-xl min-h-[140px] p-4 text-base text-white placeholder-[#caa5b5] focus:outline-none focus:ring-2 focus:ring-[#ee2b7c]/50 focus:border-[#ee2b7c] transition-shadow resize-none"
                     placeholder="Ex: Cliente tem alergia a acetona..."
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
@@ -298,7 +298,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">Cliente</label>
                 <input 
                     type="text"
-                    className="w-full p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-[#1b0d13] dark:text-[#fcf8fa] placeholder-[#9a4c6c]"
+                    className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#caa5b5]"
                     placeholder="Busque ou digite o nome..."
                     value={clientName}
                     onChange={handleClientSelect}
@@ -307,13 +307,13 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 />
                 
                 {showClientList && clientName.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#1b121b] border border-[#2a1822] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
                         {(Array.isArray(clients) ? clients : [])
                             .filter(c => c.name.toLowerCase().includes(clientName.toLowerCase()))
                             .map((c, i) => (
                                 <div 
                                     key={i}
-                                    className="p-3 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer border-b border-[#e7cfd9] dark:border-[#522a3a] last:border-0 transition-colors"
+                                    className="p-3 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer border-b border-[#2a1822] last:border-0 transition-colors"
                                     onClick={() => {
                                         setClientName(c.name);
                                         setClientContact(c.contact);
@@ -321,7 +321,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                                         setShowClientList(false);
                                     }}
                                 >
-                                    <p className="font-bold text-[#1b0d13] dark:text-[#fcf8fa] text-sm">{c.name}</p>
+                                    <p className="font-bold text-white text-sm">{c.name}</p>
                                     <p className="text-xs text-[#9a4c6c] dark:text-gray-400">{c.contact}</p>
                                 </div>
                             ))
@@ -338,7 +338,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">Contato (WhatsApp)</label>
                 <input 
                     type="text"
-                    className="w-full p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-[#1b0d13] dark:text-[#fcf8fa] placeholder-[#9a4c6c]"
+                    className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#caa5b5]"
                     placeholder="(XX) XXXXX-XXXX"
                     value={clientContact}
                     onChange={(e) => {
@@ -356,7 +356,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                 <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">CPF</label>
                 <input
                     type="text"
-                    className="w-full p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-[#1b0d13] dark:text-[#fcf8fa] placeholder-[#9a4c6c]"
+                    className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white placeholder-[#caa5b5]"
                     placeholder="000.000.000-00"
                     value={clientCpf}
                     onChange={(e) => {
@@ -378,9 +378,9 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                     <div className="relative">
                         <div 
                             onClick={() => setShowServiceList(!showServiceList)}
-                            className="w-full p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl cursor-pointer flex justify-between items-center hover:bg-black/5 dark:hover:bg-white/5 transition-colors truncate"
+                            className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl cursor-pointer flex justify-between items-center hover:bg-black/5 dark:hover:bg-white/5 transition-colors truncate"
                         >
-                            <span className={`text-sm font-medium truncate ${procedureId ? 'text-[#1b0d13] dark:text-[#fcf8fa]' : 'text-[#9a4c6c]'}`}>
+                            <span className={`text-sm font-medium truncate ${procedureId ? 'text-white' : 'text-[#9a4c6c]'}`}>
                                 {procedureId 
                                     ? procedures.find(p => p.id === procedureId)?.name || '...' 
                                     : 'Selecione...'}
@@ -388,17 +388,17 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                         </div>
 
                         {showServiceList && (
-                            <div className="absolute top-full left-0 w-[200%] md:w-full mt-1 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                            <div className="absolute top-full left-0 w-[200%] md:w-full mt-1 bg-[#1b121b] border border-[#2a1822] rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
                                 {procedures.map(p => {
                                     const isPromo = !!p.is_promotional && (!p.promo_end_date || new Date(p.promo_end_date) > new Date());
                                     return (
                                         <div 
                                             key={p.id} 
                                             onClick={() => handleServiceSelect(p)}
-                                            className={`p-3 border-b border-[#e7cfd9] dark:border-[#522a3a] last:border-0 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex justify-between items-center ${procedureId === p.id ? 'bg-[#ee2b7c]/10' : ''}`}
+                                            className={`p-3 border-b border-[#2a1822] last:border-0 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex justify-between items-center ${procedureId === p.id ? 'bg-[#ee2b7c]/10' : ''}`}
                                         >
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-[#1b0d13] dark:text-[#fcf8fa] text-sm">{p.name}</span>
+                                                <span className="font-bold text-white text-sm">{p.name}</span>
                                                 {isPromo && <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Promo</span>}
                                             </div>
                                             <div className="text-right">
@@ -422,7 +422,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                     <input 
                         type="number"
                         step="0.01"
-                        className="w-full p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-[#1b0d13] dark:text-[#fcf8fa] font-bold"
+                        className="w-full p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl focus:ring-2 focus:ring-[#ee2b7c]/50 outline-none text-white font-bold"
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                         placeholder="0.00"
@@ -441,6 +441,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                         selectedDate={date} 
                         onSelectDate={(d) => setDate(d)} 
                         blockedDates={[]} 
+                        variant="plain"
                      />
                 </div>
             </div>
@@ -454,7 +455,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                             <input 
                                 type="checkbox" 
                                 id="admin-custom-time" 
-                                className="w-4 h-4 text-[#ee2b7c] rounded border-[#e7cfd9] dark:border-[#522a3a] bg-[#fcf8fa] dark:bg-[#2d1b24] focus:ring-[#ee2b7c]"
+                                className="w-4 h-4 text-[#ee2b7c] rounded border-[#2a1822] bg-[#1b121b] focus:ring-[#ee2b7c]"
                                 checked={isCustomTime}
                                 onChange={(e) => {
                                     setIsCustomTime(e.target.checked);
@@ -468,7 +469,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                    </div>
 
                    {isCustomTime ? (
-                       <div className="p-3 bg-[#fcf8fa] dark:bg-[#2d1b24] border border-[#e7cfd9] dark:border-[#522a3a] rounded-xl flex gap-2 justify-center items-center">
+                       <div className="p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl flex gap-2 justify-center items-center">
                            <select 
                                value={time?.split(':')[0] || ''}
                                onChange={(e) => {
@@ -476,7 +477,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                                    const curM = time?.split(':')[1] || '00';
                                    setTime(`${newH}:${curM}`);
                                }}
-                               className="p-2 bg-white dark:bg-[#1b0d13] border border-[#e7cfd9] dark:border-[#522a3a] rounded-lg text-lg font-bold text-[#1b0d13] dark:text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
+                               className="p-2 bg-[#1b121b] border border-[#2a1822] rounded-lg text-lg font-bold text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
                            >
                                {Array.from({ length: 24 }).map((_, i) => {
                                    const h = i.toString().padStart(2, '0');
@@ -491,7 +492,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                                    const newM = e.target.value;
                                    setTime(`${curH}:${newM}`);
                                }}
-                               className="p-2 bg-white dark:bg-[#1b0d13] border border-[#e7cfd9] dark:border-[#522a3a] rounded-lg text-lg font-bold text-[#1b0d13] dark:text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
+                               className="p-2 bg-[#1b121b] border border-[#2a1822] rounded-lg text-lg font-bold text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
                            >
                                {Array.from({ length: 12 }).map((_, i) => {
                                    const m = (i * 5).toString().padStart(2, '0');
@@ -517,7 +518,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
                                             ${time === slot.time
                                                 ? 'bg-[#ee2b7c] text-white border-[#ee2b7c]' 
                                                 : slot.available
-                                                    ? 'bg-[#fcf8fa] dark:bg-[#2d1b24] text-[#1b0d13] dark:text-white border-[#e7cfd9] dark:border-[#522a3a] hover:border-[#ee2b7c] hover:text-[#ee2b7c]'
+                                                    ? 'bg-[#1b121b] text-white border-[#2a1822] hover:border-[#ee2b7c] hover:text-[#ee2b7c]'
                                                 : slot.reason === 'past'
                                                         ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
                                                         : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-60'}
@@ -538,7 +539,7 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
 
         </div>
 
-        <div className="sticky bottom-0 bg-[#f8f6f7]/95 dark:bg-[#221018]/95 backdrop-blur border-t border-[#e7cfd9] dark:border-[#522a3a] p-4 flex flex-col gap-3">
+        <div className="sticky bottom-0 bg-[#120b12]/95 backdrop-blur border-t border-[#2a1822] p-4 flex flex-col gap-3">
             <button 
                 onClick={handleSubmit}
                 type="button"

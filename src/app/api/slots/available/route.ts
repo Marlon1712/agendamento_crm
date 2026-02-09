@@ -92,6 +92,9 @@ export async function GET(request: Request) {
           end: b.end_time ? toMinutes(b.end_time) : toMinutes(b.start_time) + 30
         }))
       : (lunchStartMin !== -1 && lunchEndMin !== -1 ? [{ start: lunchStartMin, end: lunchEndMin }] : []);
+    const summaryLunch = lunchRanges.length > 0
+      ? { start: formatTime(lunchRanges[0].start), end: formatTime(lunchRanges[0].end) }
+      : { start: null, end: null };
     
     // Current time for "past" validation
     const now = new Date();
@@ -193,19 +196,42 @@ export async function GET(request: Request) {
             }
         }
 
-        // Add to list if it starts before closing
-        if (slotStart < endMin) {
+    // Add to list if it starts before closing
+    if (slotStart < endMin) {
+        allSlots.push({
+            time: formatTime(slotStart),
+            available: status === 'available',
+            reason: unavailableReason,
+            blockedReason: blockReason,
+            blockedId: blockId,
+            availableOverrideId,
+            debug: `start:${slotStart} end:${slotEnd}`
+        });
+    }
+    }
+
+    // Ensure manual available overrides always appear, even outside schedule window
+    availableOverrides.forEach((ov: any) => {
+        const time = ov.start_time?.slice(0, 5);
+        if (!time) return;
+        const existing = allSlots.find((s: any) => s.time === time);
+        if (existing) {
+            // Avoid duplicates and ensure override makes it available
+            existing.available = true;
+            existing.reason = '';
+            existing.availableOverrideId = ov.id || null;
+            existing.blockedId = existing.blockedId || null;
+        } else {
             allSlots.push({
-                time: formatTime(slotStart),
-                available: status === 'available',
-                reason: unavailableReason,
-                blockedReason: blockReason,
-                blockedId: blockId,
-                availableOverrideId,
-                debug: `start:${slotStart} end:${slotEnd}`
+                time,
+                available: true,
+                reason: '',
+                blockedReason: null,
+                blockedId: null,
+                availableOverrideId: ov.id || null
             });
         }
-    }
+    });
 
     const hasAvailable = allSlots.some(s => s.available);
     let globalReason = null;
@@ -229,7 +255,9 @@ export async function GET(request: Request) {
             isOpen: true, // simplified, relying on date check
             reason: summaryReason,
             openTime,
-            closeTime
+            closeTime,
+            lunchStart: summaryLunch.start,
+            lunchEnd: summaryLunch.end
         }
     });
 

@@ -7,9 +7,10 @@ interface CalendarProps {
   onSelectDate: (date: string) => void;
   blockedDates?: string[]; // strings 'YYYY-MM-DD'
   closedDays?: number[]; // [0, 1... 6]
+  variant?: 'boxed' | 'plain';
 }
 
-export default function Calendar({ selectedDate, onSelectDate, blockedDates = [], closedDays = [] }: CalendarProps) {
+export default function Calendar({ selectedDate, onSelectDate, blockedDates = [], closedDays = [], variant = 'boxed' }: CalendarProps) {
   // If selectedDate is empty (""), new Date("") -> Invalid Date. 
   // We must fallback to current date for the VIEW, but keep selectedDate logic separate.
   const [currentDate, setCurrentDate] = useState(() => {
@@ -95,7 +96,7 @@ export default function Calendar({ selectedDate, onSelectDate, blockedDates = []
 
 
   return (
-    <div className="bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-700">
+    <div className={variant === 'plain' ? 'p-0' : 'bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-700'}>
       <div className="relative flex items-center justify-center mb-6 pt-2">
         <button 
             type="button" 

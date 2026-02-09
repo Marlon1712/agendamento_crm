@@ -26,7 +26,7 @@ export default function CalendarDashboard() {
         blockedId?: number | null;
         availableOverrideId?: number | null;
     }[]>([]);
-    const [slotMeta, setSlotMeta] = useState<{ openTime?: string; closeTime?: string }>({});
+    const [slotMeta, setSlotMeta] = useState<{ openTime?: string; closeTime?: string; lunchStart?: string; lunchEnd?: string }>({});
     const [slotsRefreshTick, setSlotsRefreshTick] = useState(0);
     const [initialTime, setInitialTime] = useState<string | undefined>(undefined);
     const [unblockModal, setUnblockModal] = useState<{ isOpen: boolean; id: number | null; label?: string; time?: string; end?: string }>({ isOpen: false, id: null });
@@ -212,7 +212,9 @@ export default function CalendarDashboard() {
                 setAvailableSlots(data.slots || []);
                 setSlotMeta({
                     openTime: data?.summary?.openTime ? String(data.summary.openTime).slice(0, 5) : undefined,
-                    closeTime: data?.summary?.closeTime ? String(data.summary.closeTime).slice(0, 5) : undefined
+                    closeTime: data?.summary?.closeTime ? String(data.summary.closeTime).slice(0, 5) : undefined,
+                    lunchStart: data?.summary?.lunchStart ? String(data.summary.lunchStart).slice(0, 5) : undefined,
+                    lunchEnd: data?.summary?.lunchEnd ? String(data.summary.lunchEnd).slice(0, 5) : undefined
                 });
             })
             .catch(() => {
@@ -995,7 +997,9 @@ export default function CalendarDashboard() {
                                                     >
                                                         <div className="flex items-center gap-3 flex-1">
                                                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                                {lunchGroup ? `${time} - ${lunchGroup.end}` : time}
+                                                                {slotMeta.lunchStart && slotMeta.lunchEnd
+                                                                    ? `${slotMeta.lunchStart} - ${slotMeta.lunchEnd}`
+                                                                    : (lunchGroup ? `${time} - ${lunchGroup.end}` : time)}
                                                             </span>
                                                             <div className="h-px bg-slate-300 dark:bg-slate-700 flex-1" />
                                                             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wide">Almoço</span>
@@ -1057,12 +1061,12 @@ export default function CalendarDashboard() {
                                         })}
 
                                         {canceledLeads.length > 0 && (
-                                            <div className="mt-6 space-y-3">
+                                            <div className="mt-6 space-y-3 w-full">
                                                 <div className="text-xs uppercase tracking-wider text-rose-300 font-semibold">Cancelados</div>
                                                 {canceledLeads.map((c: any) => (
                                                     <div
                                                         key={`cancel-${c.id}`}
-                                                        className="rounded-2xl shadow-sm border relative overflow-hidden p-4 h-auto"
+                                                        className="w-full rounded-2xl shadow-sm border relative overflow-hidden p-4 h-auto"
                                                         style={{
                                                             backgroundColor: hexToRgba(getLeadColor(c), 0.08),
                                                             borderColor: hexToRgba(getLeadColor(c), 0.25)
