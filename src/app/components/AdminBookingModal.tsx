@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronDown, Pencil, Scissors } from 'lucide-react';
-import Calendar from './Calendar';
 
 type BookingData = {
     id?: number;
@@ -41,7 +40,6 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   const [price, setPrice] = useState<string>('');
   
   const [availableSlots, setAvailableSlots] = useState<{time: string, available: boolean, reason?: string}[]>([]);
-  const [isCustomTime, setIsCustomTime] = useState(false);
   const [showClientList, setShowClientList] = useState(false);
   const [showServiceList, setShowServiceList] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
@@ -205,6 +203,21 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
   if (!isOpen) return null;
 
   const isEditMode = !!bookingToEdit;
+  const weekDays = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const toLocalDate = (value: string) => {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  };
+  const formatISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const selectedDate = date ? toLocalDate(date) : new Date();
+  const startOfWeek = new Date(selectedDate);
+  startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+  const monthLabel = selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   return (
     <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm dark" style={{ zIndex: 2147483647 }}>
@@ -217,35 +230,6 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
         <div className="px-4 py-6 space-y-5 overflow-y-auto">
           {isEditMode && (
             <>
-              <div className="bg-[#1b121b] border border-[#2a1822] rounded-xl p-4 flex items-center gap-4 shadow-sm">
-                <div className="bg-[#ee2b7c]/10 dark:bg-[#ee2b7c]/20 p-3 rounded-full flex items-center justify-center shrink-0">
-                  <CalendarIcon size={18} className="text-[#ee2b7c]" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 uppercase tracking-wider mb-0.5">Data e Hora</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-semibold text-white">
-                      {date ? date.split('-').reverse().join('/') : '--/--/----'}
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-white/20"></span>
-                    <span className="text-base font-semibold text-white">
-                      {time ? time.slice(0, 5) : '--:--'}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    if (onRequestReschedule) {
-                      onClose();
-                      onRequestReschedule();
-                    }
-                  }}
-                  className="text-[#ee2b7c] text-sm font-bold hover:underline"
-                >
-                  Alterar
-                </button>
-              </div>
-
               <div className="flex flex-col gap-2">
                 <label className="text-base font-medium text-white">Serviço</label>
                 <div className="relative group">
@@ -432,110 +416,76 @@ export default function AdminBookingModal({ isOpen, onClose, onSuccess, initialD
             </>
           )}
 
-            {/* Date */}
-            {!isEditMode && (
-            <div>
-                <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 mb-1 uppercase tracking-wider">Data do Agendamento</label>
-                <div className="flex justify-center pt-2">
-                     <Calendar 
-                        selectedDate={date} 
-                        onSelectDate={(d) => setDate(d)} 
-                        blockedDates={[]} 
-                        variant="plain"
-                     />
+            <div className="rounded-2xl border border-[#2a1822] bg-[#160d16] p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon size={16} className="text-[#ee2b7c]" />
+                  <h4 className="text-sm font-bold text-white">Data e Hora</h4>
                 </div>
+                <span className="text-xs font-semibold text-[#ee2b7c] capitalize">{monthLabel}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-7 gap-2">
+                {Array.from({ length: 7 }).map((_, i) => {
+                  const d = new Date(startOfWeek);
+                  d.setDate(startOfWeek.getDate() + i);
+                  const iso = formatISO(d);
+                  const isActive = iso === date;
+                  return (
+                    <button
+                      key={iso}
+                      type="button"
+                      onClick={() => setDate(iso)}
+                      className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'border-[#ee2b7c] bg-[#ee2b7c] text-white shadow-[0_0_0_2px_rgba(238,43,124,0.15)]'
+                          : 'border-[#2a1822] bg-[#1b121b] text-white/80 hover:border-[#ee2b7c]/60'
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase tracking-wide text-white/60">{weekDays[d.getDay()]}</span>
+                      <span className="text-sm font-bold">{String(d.getDate()).padStart(2, '0')}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {date && procedureId ? (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-[#9a4c6c] uppercase tracking-wider">Horários</label>
+                    <span className="text-[11px] text-white/50">Selecione um horário</span>
+                  </div>
+                  {availableSlots.length > 0 ? (
+                    <div className="grid grid-cols-4 gap-2">
+                      {availableSlots.map(slot => {
+                        const isSelectable = slot.available || slot.reason === 'past';
+                        const isDisabled = !isSelectable;
+                        return (
+                          <button
+                            type="button"
+                            key={slot.time}
+                            onClick={() => isSelectable && setTime(slot.time)}
+                            disabled={isDisabled}
+                            className={`rounded-full border px-0 py-2 text-xs font-bold transition-all ${
+                              time === slot.time
+                                ? 'bg-[#ee2b7c] text-white border-[#ee2b7c] shadow-[0_0_0_2px_rgba(238,43,124,0.2)]'
+                                : isDisabled
+                                  ? 'border-[#2a1822] text-white/30 line-through'
+                                  : 'border-[#2a1822] text-white/80 hover:border-[#ee2b7c]/70'
+                            }`}
+                          >
+                            {slot.time.slice(0, 5)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#9a4c6c] italic">Nenhum horário disponível.</p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-[#9a4c6c] italic">Selecione serviço e data para ver os horários.</p>
+              )}
             </div>
-            )}
-
-            {!isEditMode && date && procedureId && (
-                <div>
-                   <div className="flex justify-between items-center mb-1">
-                       <label className="block text-xs font-medium text-[#9a4c6c] dark:text-[#ee2b7c]/80 uppercase tracking-wider">Horário</label>
-                       <div className="flex items-center gap-2">
-                            <input 
-                                type="checkbox" 
-                                id="admin-custom-time" 
-                                className="w-4 h-4 text-[#ee2b7c] rounded border-[#2a1822] bg-[#1b121b] focus:ring-[#ee2b7c]"
-                                checked={isCustomTime}
-                                onChange={(e) => {
-                                    setIsCustomTime(e.target.checked);
-                                    setTime(null); 
-                                }}
-                            />
-                            <label htmlFor="admin-custom-time" className="text-xs text-[#9a4c6c] dark:text-gray-400 font-medium cursor-pointer select-none">
-                                Horário Personalizado
-                            </label>
-                        </div>
-                   </div>
-
-                   {isCustomTime ? (
-                       <div className="p-3 bg-[#1b121b] border border-[#2a1822] rounded-xl flex gap-2 justify-center items-center">
-                           <select 
-                               value={time?.split(':')[0] || ''}
-                               onChange={(e) => {
-                                   const newH = e.target.value;
-                                   const curM = time?.split(':')[1] || '00';
-                                   setTime(`${newH}:${curM}`);
-                               }}
-                               className="p-2 bg-[#1b121b] border border-[#2a1822] rounded-lg text-lg font-bold text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
-                           >
-                               {Array.from({ length: 24 }).map((_, i) => {
-                                   const h = i.toString().padStart(2, '0');
-                                   return <option key={h} value={h}>{h}</option>;
-                               })}
-                           </select>
-                           <span className="text-xl font-bold text-white">:</span>
-                           <select 
-                               value={time?.split(':')[1] || ''}
-                               onChange={(e) => {
-                                   const curH = time?.split(':')[0] || '09';
-                                   const newM = e.target.value;
-                                   setTime(`${curH}:${newM}`);
-                               }}
-                               className="p-2 bg-[#1b121b] border border-[#2a1822] rounded-lg text-lg font-bold text-white outline-none focus:ring-2 focus:ring-[#ee2b7c] w-20 text-center appearance-none"
-                           >
-                               {Array.from({ length: 12 }).map((_, i) => {
-                                   const m = (i * 5).toString().padStart(2, '0');
-                                   return <option key={m} value={m}>{m}</option>;
-                               })} 
-                           </select>
-                       </div>
-                   ) : (
-                       availableSlots.length > 0 ? (
-                           <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                           {availableSlots.map(slot => {
-                                   // Allow if available OR Past (admin override)
-                                   const isSelectable = slot.available || slot.reason === 'past';
-                                   
-                                   return (
-                                       <button
-                                          type="button"
-                                          key={slot.time}
-                                          onClick={() => isSelectable && setTime(slot.time)}
-                                          disabled={!isSelectable}
-                                          className={`
-                                            p-2 rounded-lg text-sm font-bold border transition-all
-                                            ${time === slot.time
-                                                ? 'bg-[#ee2b7c] text-white border-[#ee2b7c]' 
-                                                : slot.available
-                                                    ? 'bg-[#1b121b] text-white border-[#2a1822] hover:border-[#ee2b7c] hover:text-[#ee2b7c]'
-                                                : slot.reason === 'past'
-                                                        ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
-                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-60'}
-                                          `}
-                                          title={isSelectable ? 'Disponível (ou Ajuste)' : 'Indisponível'}
-                                       >
-                                           {slot.time.slice(0, 5)}
-                                       </button>
-                                   );
-                               })}
-                           </div>
-                       ) : (
-                           <p className="text-sm text-[#9a4c6c] dark:text-gray-400 italic">Nenhum horário disponível (use Hora Personalizada se necessário).</p>
-                       )
-                   )}
-                </div>
-            )}
 
         </div>
 
