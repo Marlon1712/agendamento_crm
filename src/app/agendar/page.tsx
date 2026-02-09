@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function BookingPage() {
+    const router = useRouter();
     const [procedures, setProcedures] = useState<any[]>([]);
     const [selectedService, setSelectedService] = useState<number | null>(null);
     const [form, setForm] = useState({ name: '', contact: '', cpf: '' });
@@ -100,6 +102,9 @@ export default function BookingPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Erro ao solicitar');
             setSuccess({ date, time });
+            setTimeout(() => {
+                router.push('/');
+            }, 800);
         } catch (err: any) {
             setError(err.message || 'Erro ao solicitar');
         } finally {
@@ -113,7 +118,23 @@ export default function BookingPage() {
             <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-            <div className="relative flex min-h-screen w-full flex-col max-w-md mx-auto shadow-2xl bg-[#f8f6f7] dark:bg-[#221018]">
+        <div className="relative flex min-h-screen w-full flex-col max-w-md mx-auto shadow-2xl bg-[#f8f6f7] dark:bg-[#221018]">
+                <style jsx global>{`
+                    input:-webkit-autofill,
+                    input:-webkit-autofill:hover,
+                    input:-webkit-autofill:focus,
+                    textarea:-webkit-autofill,
+                    textarea:-webkit-autofill:hover,
+                    textarea:-webkit-autofill:focus,
+                    select:-webkit-autofill,
+                    select:-webkit-autofill:hover,
+                    select:-webkit-autofill:focus {
+                        -webkit-box-shadow: 0 0 0px 1000px #221018 inset !important;
+                        -webkit-text-fill-color: #ffffff !important;
+                        caret-color: #ffffff !important;
+                        transition: background-color 9999s ease-in-out 0s;
+                    }
+                `}</style>
 
                 {/* Top App Bar */}
                 <div className="sticky top-0 z-50 bg-[#f8f6f7]/80 dark:bg-[#221018]/80 backdrop-blur-md p-4 pb-2 border-b border-gray-100 dark:border-gray-800">
